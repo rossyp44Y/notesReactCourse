@@ -111,7 +111,7 @@ React Course - Udemy - Andrew Mead
 - To achieve conditional rendering we can combine truthy/falsy values with:
   - if statements
   - ternary operator (this is an expression not statement)
-  - logical and operator ```(&&```
+  - logical and operator ```(&&)```
 
 ## If statement  
 - Calling a function is an expression but defining an if statement is not.
