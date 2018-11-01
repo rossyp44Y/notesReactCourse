@@ -223,8 +223,165 @@ React Course - Udemy - Andrew Mead
   ReactDOM.render(templateTwo, appRoot);
   ```
 
+# Var vs. let/const
+- ```var``` based variables are **function scoped**. That means that vars created inside an if statement are accessible outside the if statement.
+- ```let``` and ```const``` based variables are **block level scoped**. They are accessible only inside the 'if' curly braces.
+- As a good practice start all variables off as ```const``` and change it to ```let``` if needed. _var_ never :smirk:
 
+# Functions vs. Arrow functions - Syntax
+```javascript
+// Named function
+function square (x) {
+  return x * x
+}
+console.log('Named function', square(2))
 
+// Anonymous function
+const square2 = function (x) {
+  return x * x
+}
+console.log('Anonymous function', square2(5))
+
+// Arrow function
+const squareArrow = (x) => {
+  return x * x
+}
+console.log('Arrow function', squareArrow(8))
+
+// Arrow function with shorthand syntax
+const squareArrow2 = (x) => x * x
+console.log('Arrow function with shorthand syntax', squareArrow2(9))
+```
+
+# Functions vs. Arrow functions - Deep dive
+## arguments object
+```javascript
+// arguments object - no longer bound with arrow functions
+const add = function (a, b) {
+  console.log(arguments) //38, 3, 100, ...
+  return a + b
+}
+console.log(add(38, 3, 100)) //41
+
+const add2 = (a, b) => {
+  console.log(arguments) //error - can't find variable arguments
+  return a + b
+}
+console.log(add2(38, 3, 100)) //not executed due to error
+```
+## this object
+```javascript
+// 'this' keyword - no longer bound
+const user = {
+  name: 'Rocio',
+  cities: ['Colombia', 'Venezuela', 'USA', 'Australia'],
+  printPlacesLived: function () {
+    console.log(this.name) //Rocio
+    console.log(this.cities) //["Colombia", "Venezuela", "USA", "Australia"]
+    this.cities.forEach(function (city) {
+    console.log(`${this.name} has lived in ${city}`)  // error, undefined is not an object
+    })                                                // there's no bound 'this' value
+  }
+}
+user.printPlacesLived();
+
+// workaround
+const user2 = {
+  name: 'Rocio',
+  cities: ['Colombia', 'Venezuela', 'USA', 'Australia'],
+  printPlacesLived: function () {
+    const that = this;
+    //with an anonymous function, 'this' is not bound...as a workaround we use 'that' to preserve the context
+    this.cities.forEach(function (city) {
+      console.log(`${that.name} has lived in ${city}`) //expected output
+    }) 
+  }
+}
+user2.printPlacesLived();
+
+// with arrow functions there's no need for any workaround
+const user3 = {
+  name: 'Rocio',
+  cities: ['Bogotá', 'Valencia', 'Caracas', 'Chicago', 'Melbourne'],
+  printPlacesLived: function () {
+    //arrow functions no longer bind their own 'this' value
+    //instead they just use the 'this' value of the context they were created in
+    //uses its parent's 'this' value
+    this.cities.forEach((city) => {
+      console.log(`${this.name} has lived in ${city}`) //expected output
+    })
+  }
+}
+user3.printPlacesLived();
+
+//an arrow function wouldn't work here because it will try to use the parent's this which is undefined
+...
+printPlacesLived: () => {
+  this.cities.forEach((city) => {
+    console.log(`${this.name} has lived in ${city}`)
+  })
+}
+...
+//we can use the new syntax though to make it clearer
+...
+const user4 = {
+  name: 'Rocio',
+  cities: ['Bogotá', 'Valencia', 'Caracas', 'Chicago', 'Melbourne'],
+  printPlacesLived() { //using new es6 syntax
+    this.cities.forEach((city) => {
+      console.log(`${this.name} has lived in ${city}`) //expected output
+    })
+  }
+}
+user4.printPlacesLived();
+...
+```
+
+# map function
+- **map** is an array method extensively used with JSX
+- Like the ```forEach``` method, ```map``` gets called with a single function, this function gets called one time for every item in the array and we have access to that item via the first argument
+- ```forEach``` lets you do something with each element whereas with ```map``` we can actually transform each item
+- We get a new array back with the transformed items 
+- The original array doesn't get changed
+  ```javascript
+  const user5 = {
+    name: 'Rocio',
+    cities: ['Miami', 'Chicago', 'Buenos Aires', 'Mexico City', 'Sydney', 'Brisbane'],
+    printPlacesLived() {
+      const cityMessages = this.cities.map((city) => {
+        return `${this.name} has visited ${city}`
+      })
+      return cityMessages
+    }
+  }
+  console.log(user5.printPlacesLived());
+  //output: ["Rocio has visited Miami", "Rocio has visited Chicago", "Rocio has visited Buenos Aires", 
+  //"Rocio has visited Mexico City", "Rocio has visited Sydney", "Rocio has visited Brisbane"]
+  ```
+- Simplified syntax
+  ```javascript
+  const user6 = {
+    name: 'Rocio',
+    cities: ['Miami', 'Chicago', 'Buenos Aires', 'Mexico City', 'Sydney', 'Brisbane'],
+    printPlacesLived() {
+      return this.cities.map((city) => `${this.name} has visited ${city}`)
+    }
+  }
+  console.log(user6.printPlacesLived());
+  ```
+- map challenge
+  ```javascript
+  // challenge
+  const multiplier = {
+    numbers: [8, 9, 5],
+    multiplyBy: 2,
+    multiply() {
+      //the expression after => is implicitly returned
+      return this.numbers.map((number) => number * this.multiplyBy)
+    }
+  }
+  console.log(multiplier.multiply()) //output: [16, 18, 10]
+  ```
 
 
 
@@ -241,3 +398,4 @@ React Course - Udemy - Andrew Mead
   -
   -
 <hr>
+
