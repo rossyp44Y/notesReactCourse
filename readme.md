@@ -3,6 +3,29 @@
 
 React Course - Udemy - Andrew Mead
 ============================================
+<!-- TOC -->
+
+- [Setting up environment](#setting-up-environment)
+- [Hello React](#hello-react)
+- [JSX Basics](#jsx-basics)
+- [JSX Expressions](#jsx-expressions)
+- [JSX Conditional Rendering](#jsx-conditional-rendering)
+  - [If statement](#if-statement)
+  - [Ternary Operator](#ternary-operator)
+  - [Logical and operator](#logical-and-operator)
+  - [All together](#all-together)
+- [Var vs. let/const](#var-vs-letconst)
+- [Functions vs. Arrow functions - Syntax](#functions-vs-arrow-functions---syntax)
+- [Functions vs. Arrow functions - Deep dive](#functions-vs-arrow-functions---deep-dive)
+  - [arguments object](#arguments-object)
+  - [this object](#this-object)
+- [map function](#map-function)
+- [Events and attributes](#events-and-attributes)
+  - [Attributes](#attributes)
+  - [Events](#events)
+- [Manual Data Binding](#manual-data-binding)
+
+<!-- /TOC -->
 
 # Setting up environment
 - Node, npm, yarn
@@ -383,10 +406,105 @@ user4.printPlacesLived();
   console.log(multiplier.multiply()) //output: [16, 18, 10]
   ```
 
+# Events and attributes
+## Attributes
+- Adding attributes to HTML elements in JSX is as easy as adding them to an a regular html element. However, some attributes such as ```class``` have been renamed for JSX. In this particular case ```class``` is a reserved word to create classes in javascript.
+- Similar thing happens with some other attributes: https://reactjs.org/docs/dom-elements.html. Many of them have also been renamed to camelCase.
+  ```javascript
+  let count = 0
+  const templateTwo = (
+    <div>
+      <h1>Count: {count}</h1>
+      <button id="my_id" className="button">+1</button>
+    </div>
+  );
+  const appRoot = document.getElementById('app');
+  ReactDOM.render(templateTwo, appRoot);
+  ```
+- In the end of the day ```templateTwo``` is just an object with ```type: "div"``` (root) and sub-elements are inside ```props.children```. In turn, each sub-element has the same structure: a type and its children (as nodes)
+![Template Object](./img/template_object.png)
+- An attribute can be set equal to a javascript expression, whatever results from the expression will be the value for the attribute.
+  ```javascript
+  let count = 0
+  const someId = 'myidhere'
+  const templateTwo = (
+    <div>
+      <h1>Count: {count}</h1>
+      <button id={someId} className="button">+1</button>
+    </div>
+  );
+  ```
+## Events
+- Expressions as the value for attributes are very useful for event handling.
+  ```javascript
+  let count = 0
+  const addOne = () => {
+    console.log('addOne')
+  }
+  const templateTwo = (
+    <div>
+      <h1>Count: {count}</h1>
+      <button onClick={addOne}>+1</button>
+    </div>
+  );
+  const appRoot = document.getElementById('app');
+  ReactDOM.render(templateTwo, appRoot);
+  ```
+- We can also define the even handler inline. Better for short functions as it gets difficult to read and maintain.
+  ```javascript
+  let count = 0
+  const templateTwo = (
+    <div>
+      <h1>Count: {count}</h1>
+      <button onClick={() => {
+        console.log('adding one')
+        }}>+1
+      </button>
+    </div>
+  );
+  const appRoot = document.getElementById('app');
+  ReactDOM.render(templateTwo, appRoot);
+  ```
 
-
-
-
+# Manual Data Binding
+- JSX does not have built-in data binding
+- Trying to update the counter in the previous example using the same code will not have effect in the view (HTML)
+- The expression ```const templateTwo = ...``` runs before anything is rendered to the screen. ```count``` is zero and the buttons haven't even been registered with the event handler functions. The actual render happens when we call ```ReactDOM.render()```
+  ```javascript
+  let count = 0
+  const addOne = () => {
+    count++
+    console.log('addOne', count)
+  }
+  const templateTwo = (
+    <div>
+      <h1>Count: {count}</h1> // this will always be zero
+      <button onClick={addOne}>+1</button>
+    </div>
+  );
+  const appRoot = document.getElementById('app');
+  ReactDOM.render(templateTwo, appRoot);
+  ```
+- As a workaround we can move the template and rendering code to a function and call that function once when the page loads and then any time we change the data (**manual binding**). Later we'll use react components to do this.
+  ```javascript
+  let count = 0
+  const addOne = () => {
+    count++
+    renderCounterApp() //re-render when data changes
+  }
+  const appRoot = document.getElementById('app')
+  const renderCounterApp = () => {
+    const templateTwo = (
+      <div>
+        <h1>Count: {count}</h1>
+        <button onClick={addOne}>+1</button>
+      </div>
+    );
+    ReactDOM.render(templateTwo, appRoot)
+  }
+  renderCounterApp() //initialize the App
+  ```
+- Rendering UI is very expensive but React makes the re-rendering super efficient. React uses virtual DOM algorithms to determine the portions on the screen that need to be updated and changes only that small little section. No even changing whole tags (such as ```<h1>```) but the text node that contains the counter in this example. What comes back from ```React.createElement()``` is just an object that represents our entire JSX tree. React uses algorithms to compare two objects which is way less expensive that re-painting pixels to the browser.
 
 
 
