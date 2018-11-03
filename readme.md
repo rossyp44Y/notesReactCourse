@@ -8,6 +8,7 @@ React Course - Udemy - Andrew Mead
 - [Setting up environment](#setting-up-environment)
 - [Hello React](#hello-react)
 - [JSX Basics](#jsx-basics)
+- [JSX Comments](#jsx-comments)
 - [JSX Expressions](#jsx-expressions)
 - [JSX Conditional Rendering](#jsx-conditional-rendering)
   - [If statement](#if-statement)
@@ -24,6 +25,8 @@ React Course - Udemy - Andrew Mead
   - [Attributes](#attributes)
   - [Events](#events)
 - [Manual Data Binding](#manual-data-binding)
+- [Arrays](#arrays)
+- [Forms, Inputs, Arrays and Random numbers](#forms-inputs-arrays-and-random-numbers)
 
 <!-- /TOC -->
 
@@ -106,7 +109,10 @@ React Course - Udemy - Andrew Mead
                                                   //and querySelector with others selectors
   ReactDOM.render(template, appRoot);
   ```
-
+# JSX Comments
+  ```javascript
+  {/* comments in JSX */}
+  ```
 # JSX Expressions
 - To inject dynamic data into JSX templates we use expressions: ```{ }```. 
 - We can render strings and numbers but not complete objects. We can use object properties though. (*a bit ahead but we can also render lists*)
@@ -506,7 +512,94 @@ user4.printPlacesLived();
   ```
 - Rendering UI is very expensive but React makes the re-rendering super efficient. React uses virtual DOM algorithms to determine the portions on the screen that need to be updated and changes only that small little section. No even changing whole tags (such as ```<h1>```) but the text node that contains the counter in this example. What comes back from ```React.createElement()``` is just an object that represents our entire JSX tree. React uses algorithms to compare two objects which is way less expensive that re-painting pixels to the browser.
 
+# Arrays
+- JSX support arrays by default (as well as strings and numbers. Does not support objects and ignore booleans, null and undefined)
+- When JSX sees an array it breaks each element out into their own expressions and shows them side by side
+  ```javascript
+  { [99, 98, 'Rocio'] } is equivalent to { {99}{98}{'Rocio'} } 
+  { [null, undefined, true] } is equivalent to { {null}{undefined}{true} } //none will render
+  ```
+- We know we can also render JSX inside of JSX e.g ```{<p>My Paragraph</p>}``` and that will show up to the screen. In turn, we can render an array of JSX inside JSX. Most of the time we will not have arrays of numbers/strings to render to the screen but instead arrays of JSX expressions we want to render to the screen, for example an array of paragraphs or list items ```<li>```
+  ```javascript
+  { [<p>a</p>, <p>b</p>, <p>c</p>] }
+  //will render as:
+  //a
+  //b
+  //c
+  ```
+- With JSX inside arrays, we get an error: ```Warning: Each child in an array or iterator should have a unique "key" prop.``` and this is to help JSX to know when to re-render small parts of the application.
+  ```javascript
+  { [<p key="1">a</p>, <p key="2">b</p>, <p key="3">c</p>] }
+  ```
+- To display an array of elements as JSX code we use the map function
+  ```javascript
+  const numbers = [55, 101, 1000]
+  
+  //inside render function
+  {
+    numbers.map((number) => {
+      return <p key={number}>Number: {number}</p>
+    })
+  }
+  ```
+# Forms, Inputs, Arrays and Random numbers
+- Example below takes the input and add it to the options array. Also allow to remove all options and re-renders every time the data changes. Allows to pick a random option. Handle events onSubmit and onClick and shows conditional attribute disabled. 
+- For a list of events: React Dom Events https://reactjs.org/docs/events.html
+- Math.random() generates a number between 0 and 0.999999 [0,1). It can be zero but not 1.
+  ```javascript
+  const app = {
+    title: 'Indecision App',
+    subtitle: 'Are you feeling lucky?',
+    options: []
+  };
 
+  const onFormSubmit = (e) => {
+    e.preventDefault() //avoid re-rendering the whole page
+    const option = e.target.elements.option.value //elements.option is by name
+    if(option) { //no empty
+      app.options.push(option)
+      e.target.elements.option.value = '' //clear up the input field
+      renderApp()
+    }
+  }
+
+  const onRemoveAll = () => {
+    app.options = [] //assign an empty array
+    renderApp()
+  }
+
+  const onMakeDecision = () => {
+    const randomNun = Math.floor(Math.random() * app.options.length)
+    const option = app.options[randomNun]
+    alert(option)
+  }
+
+  const appRoot = document.getElementById('app')
+
+  const renderApp = () => {
+    const template = (
+      <div>
+        <h1>{app.title}</h1>
+        {app.subtitle && <p>{app.subtitle}</p>}
+        <p>{app.options.length > 0 ? 'Here are your options' : 'No options'}</p>
+        <button disabled={app.options.length === 0} onClick={onMakeDecision}>What should I do?</button> 
+        {/* button is disabled when array is empty */}
+        <button onClick={onRemoveAll}>Remove All</button> 
+        {/*nothing to submit so no form associated*/}
+        <ol>
+          {app.options.map((option) => <li key={option}>{option}</li>)} {/*key is important*/}
+        </ol>
+        <form onSubmit={onFormSubmit}>
+          <input type="text" name="option" />
+          <button>Add Option</button>
+        </form>
+      </div>
+    );
+    ReactDOM.render(template, appRoot)
+  }
+
+  renderApp() //render App for the first time
+  ```
 
 <hr>  
   -
