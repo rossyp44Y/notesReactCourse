@@ -27,6 +27,10 @@ React Course - Udemy - Andrew Mead
 - [Manual Data Binding](#manual-data-binding)
 - [Arrays](#arrays)
 - [Forms, Inputs, Arrays and Random numbers](#forms-inputs-arrays-and-random-numbers)
+- [React Virtual DOM readings](#react-virtual-dom-readings)
+- [ES6 Classes](#es6-classes)
+- [Subclasses](#subclasses)
+- [React Components](#react-components)
 
 <!-- /TOC -->
 
@@ -109,10 +113,12 @@ React Course - Udemy - Andrew Mead
                                                   //and querySelector with others selectors
   ReactDOM.render(template, appRoot);
   ```
+
 # JSX Comments
   ```javascript
   {/* comments in JSX */}
   ```
+
 # JSX Expressions
 - To inject dynamic data into JSX templates we use expressions: ```{ }```. 
 - We can render strings and numbers but not complete objects. We can use object properties though. (*a bit ahead but we can also render lists*)
@@ -298,6 +304,7 @@ const add2 = (a, b) => {
 }
 console.log(add2(38, 3, 100)) //not executed due to error
 ```
+
 ## this object
 ```javascript
 // 'this' keyword - no longer bound
@@ -413,6 +420,7 @@ user4.printPlacesLived();
   ```
 
 # Events and attributes
+
 ## Attributes
 - Adding attributes to HTML elements in JSX is as easy as adding them to an a regular html element. However, some attributes such as ```class``` have been renamed for JSX. In this particular case ```class``` is a reserved word to create classes in javascript.
 - Similar thing happens with some other attributes: https://reactjs.org/docs/dom-elements.html. Many of them have also been renamed to camelCase.
@@ -440,6 +448,7 @@ user4.printPlacesLived();
     </div>
   );
   ```
+  
 ## Events
 - Expressions as the value for attributes are very useful for event handling.
   ```javascript
@@ -542,6 +551,7 @@ user4.printPlacesLived();
     })
   }
   ```
+  
 # Forms, Inputs, Arrays and Random numbers
 - Example below takes the input and add it to the options array. Also allow to remove all options and re-renders every time the data changes. Allows to pick a random option. Handle events onSubmit and onClick and shows conditional attribute disabled. 
 - For a list of events: React Dom Events https://reactjs.org/docs/events.html
@@ -600,7 +610,138 @@ user4.printPlacesLived();
 
   renderApp() //render App for the first time
   ```
+  
+# React Virtual DOM readings
+- https://reactjs.org/docs/reconciliation.html
+- https://medium.com/@gethylgeorge/how-virtual-dom-and-diffing-works-in-react-6fc805f9f84e
+- https://www.youtube.com/watch?v=mLMfx8BEt8g
 
+# ES6 Classes
+- ```class``` was always a reserved word but until ES6 it wasn't useful
+- By convention classes names start with uppercase ```class Person```
+- Use the ```new``` keyword to create instances of the class ```const me = new Person()```
+- Use the ```constructor``` function to set individual attributes. The constructor gets implicitly called when we crete a new instance of a class.
+  ```javascript
+  class Person {
+    constructor(name) {
+      this.name = name // customize individual instance of Person
+    }
+  }
+
+  const me = new Person('Rocio')
+  console.log(me)
+  ```
+- We don't have to pass all values to create an instance, it that case name will be undefined. ```const other = new Person()```
+- We can also provide defaults in case the data is not specified. In the past it was done with a workaround using the logical OR operator
+  ```javascript
+  class Person {
+    constructor(name) {
+      this.name = name || 'Anonymous' //use the name if it exists otherwise use 'Anonymous'
+    }
+  }
+  const other = new Person()
+  console.log(other)
+  ```
+- With ES6 we have access to **function defaults**, these can be used anywhere we define an argument list 
+  ```javascript
+  class Person {
+    constructor(name = 'Anonymous') { //function defaults
+      this.name = name
+    }
+  }
+  const other = new Person()
+  console.log(other)
+  ```
+- Constructors take care of what makes each person unique. Now, the things each person shares are modelled using **methods** which allow us to reuse code across every instance of a Person. A method need to be explicitly called for it to run.
+- :warning: Adding a comma between the constructor and methods or between methods is not allowed
+- Methods are available to us on the individual instances of our class
+  ```javascript
+  class Person {
+    constructor(name = 'Anonymous') {
+      this.name = name
+    } //no comma here to separate constructor from methods
+    getGreeting() {
+      return `Hi. I am ${this.name}!` //ES6 template strings
+    }
+  }
+  const me = new Person('Rocio')
+  console.log(me.getGreeting())
+  ```
+
+# Subclasses
+- We can extend the class Person and that's going to give us all the Person's functionality and it's also going to allow us to override any of the functionality we might want to change. ES6 does not support multiple inheritance.
+  ```javascript
+  class Student extends Person {
+    constructor(name, age, major) {
+      super(name, age)  //calling the parent constructor
+      this.major = major
+    }
+  }
+  const me = new Student('Rocio', 38, 'Computer Science')
+  const other = new Student()
+  ```
+- We can add new methods specific to the subclass
+  ```javascript
+  class Student extends Person {
+    constructor(name, age, major) {
+      super(name, age)  //calling the parent constructor
+      this.major = major
+    }
+    hasMajor() {
+      console.log(this.major) //string or undefined
+      console.log(!this.major) //false if there's a string, true otherwise
+      return !!this.major //returns boolean true if there's a string, false otherwise (instead of truthy, falsy)
+    }
+  }
+  const me = new Student('Rocio', 38, 'Computer Science')
+  console.log(me.hasMajor()) //true
+  const other = new Student()
+  console.log(other.hasMajor()) //false
+  ```
+- We can also override a method provided by the parent class
+  ```javascript
+  class Person {
+    constructor(name = 'Anonymous', age = 0) {
+      this.name = name
+      this.age = age
+    }
+    getGreeting() {
+      return `Hi. I am ${this.name}!`
+    }
+    getDescription() {
+      return `${this.name} is ${this.age} year(s) old.`
+    }
+  }
+
+  class Student extends Person {
+    constructor(name, age, major) {
+      super(name, age)  //calling the parent constructor
+      this.major = major
+    }
+    hasMajor() {
+      return !!this.major //returns boolean true if there's a string, false otherwise
+    }
+    getDescription() {
+      let description = super.getDescription() //calling parent's method
+      if(this.hasMajor()) {
+        description += ` Their major is ${this.major}.`
+      }
+      return description
+    }
+  }
+
+  const me = new Student('Rocio', 38, 'Computer Science') 
+  console.log(me.getDescription()) //Rocio is 38 year(s) old. Their major is Computer Science.
+
+  const other = new Student()
+  console.log(other.getDescription()) //Anonymous is 0 year(s) old.
+  ```
+
+
+
+# React Components
+- Components allow us to break up our App into small reusable chunks (think of it as UI sections)
+- Each little component has its own set of JSX that it renders to the screen, it can handle events for those JSX elements and allow us to create these little self-contained units 
 <hr>  
   -
   -
