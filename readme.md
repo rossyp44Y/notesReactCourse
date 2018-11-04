@@ -31,6 +31,10 @@ React Course - Udemy - Andrew Mead
 - [ES6 Classes](#es6-classes)
 - [Subclasses](#subclasses)
 - [React Components](#react-components)
+  - [Nesting Components](#nesting-components)
+  - [props](#props)
+  - [Event handling](#event-handling)
+  - [Method Binding](#method-binding)
 
 <!-- /TOC -->
 
@@ -736,12 +740,316 @@ user4.printPlacesLived();
   const other = new Student()
   console.log(other.getDescription()) //Anonymous is 0 year(s) old.
   ```
-
-
-
+  
 # React Components
 - Components allow us to break up our App into small reusable chunks (think of it as UI sections)
-- Each little component has its own set of JSX that it renders to the screen, it can handle events for those JSX elements and allow us to create these little self-contained units 
+- Each little component has its own set of JSX that React renders to the screen, it can handle events for those JSX elements and allow us to create these little self-contained units 
+- A React Components is an ES6 class that extends from ```React.Component``` (Global we get when adding React to our project)
+- React Components require the method ```render()``` to be defined. From this method we return the JSX for our Component
+- To render a Component we still use ```ReactDOM.render``` passing the JSX template we want to render and the place inside the HTML where we want it to be shown
+- Component classes must start with uppercase, React enforces this and it's a way to differentiate between regular HTML tags such as ```<h1></h1>``` and Components such as ```<Header />```. Using uppercase, the compiled code looks like ```React.createElement(Header, null)``` while with lowercase, it will try to render a 'header' HTML tag ```React.createElement('header', null),```. It's important to follow the convention, otherwise the Component will not render.
+- React Component Example
+  ```javascript
+  class Header extends React.Component {
+    render() {
+      return (
+        <div>
+          <h1>Indecision</h1>
+          <h2>Put your life in the hands of a computer</h2>
+        </div>
+      );
+    }
+  }
+  const jsx = (
+    <div>
+      <Header />
+    </div>
+  )
+  ReactDOM.render(jsx, document.getElementById('app'))
+  ```
+
+## Nesting Components
+- React Components can render another components allowing us to nest components.
+  ```javascript
+  class Option extends React.Component {
+    render() {
+      return (
+        <div>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Option component here</p>
+        </div>
+      );
+    }
+  }
+  class Options extends React.Component {
+    render() {
+      return (
+        <div>
+          <p>Options component here</p>
+          <Option /> {/* nesting */}
+          <Option /> {/* reusing */}
+        </div>
+      );
+    }
+  }
+  ```
+
+## props
+- Allow components to communicate with one another. With props we can establish one way communication between a Parent and a Child components
+- Setting props is similar to setting key-value pairs in HTML attributes
+- This is a way to make the Component more flexible and pass data as we need
+- props names can be anything eg ```<Header title="Test Title"```
+- We use ```this.props``` to get access to data passed down to the Component
+  ```javascript
+  class IndecisionApp extends React.Component {
+    render() {
+      return (
+        <div>
+          <Header title="Test Title"/>
+        </div>
+      );
+    }
+  }
+
+  class Header extends React.Component {
+    render() {
+      console.log(this.props)  {/* {title: "Test Title"} */}
+      return (
+        <div>
+          <h1>{this.props.title}</h1>
+          <h2>Put your life in the hands of a computer</h2>
+        </div>
+      );
+    }
+  }
+  ```
+- We can also set variables with data we want to pass in. Any Javascript code must be before the return statement or inside a JSX expression
+  ```javascript
+  class IndecisionApp extends React.Component {
+    render() {
+      const title = 'Indecision'
+      const subtitle = 'Put your life in the hands of a computer'
+      return (
+        <div>
+          <Header title={title} subtitle={subtitle}/>
+        </div>
+      );
+    }
+  }
+
+  class Header extends React.Component {
+    render() {
+      return (
+        <div>
+          <h1>{this.props.title}</h1>
+          <h2>{this.props.subtitle}</h2>
+        </div>
+      );
+    }
+  }
+  ```
+- Collection of elements can also get passed between components
+  ```javascript
+  class IndecisionApp extends React.Component {
+    render() {
+      const options = ['thing one', 'thing two', 'thing four']
+      return (
+        <div>
+          <Options options={options} />
+        </div>
+      );
+    }
+  }
+
+  class Options extends React.Component {
+    render() {
+      return (
+        <div>
+          {/* map returns a new array with all elements changed to be now <p> tags whose key and value are the option text*/}
+          {
+            this.props.options.map((option) => <p key={option}>{option}</p>)
+          }
+        </div>
+      );
+    }
+  }
+  ```
+- We can keep on passing data as props from component parent to children. From ```<IndecisionApp />``` to ```<Options />``` to ```<Option />```
+  ```javascript
+  class IndecisionApp extends React.Component {
+    render() {
+      const options = ['thing one', 'thing two', 'thing four']
+      return (
+        <div>
+          {/* <IndecisionApp /> passes options array to <Options /> */}
+          <Options options={options} /> 
+        </div>
+      );
+    }
+  }
+
+  class Options extends React.Component {
+    render() {
+      return (
+        <div>
+          {
+            {/* <Options /> passes each optionText to <Option /> */}
+            this.props.options.map((option) => <Option key={option} optionText={option} />)
+          }
+        </div>
+      );
+    }
+  }
+
+  class Option extends React.Component {
+    render() {
+      return (
+        <div>
+          {/* <Option /> uses the data to render the value passed from parent */}
+          {this.props.optionText}
+        </div>
+      );
+    }
+  }
+  ```
+
+## Event handling
+- We use methods inside each class to handle events associated to html elements rendered by such component. In this case onClick
+  ```javascript
+  class Action extends React.Component {
+    handlePick() {
+      alert('handlePick')
+    }
+    render() {
+      return (
+        <div>
+          <button onClick={this.handlePick}>What should I do?</button>
+        </div>
+      );
+    }
+  }
+  ```
+- Submit Form
+  ```javascript
+  class AddOption extends React.Component {
+    handleAddOption(e) { {/* gets called with the event */}
+      e.preventDefault() {/* prevents default browser behavior - submit */}
+      const option = e.target.elements.option.value.trim() {/* option here is the name of the input */}
+      if (option) {
+        alert(option)
+      }
+    }
+    render() {
+      return (
+        <div>
+          <form onSubmit={this.handleAddOption}>
+            <input type="text" name="option" />
+            <button>Add Option</button>
+          </form>
+        </div>
+        
+      );
+    }
+  }
+  ```
+
+## Method Binding
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_objects/Function/bind
+- Javascript losses the ```this``` binding in certain situations
+- We know this works
+  ```javascript
+  const obj = {
+    name: 'Rocio',
+    getName() {
+      return this.name
+    }
+  }
+  console.log(obj.getName()) //prints Rocio
+  ```
+- But this code breaks the binding. We can't get a reference to getName method. They both run the same code, the problem is that the context is different. ```obj.getName()``` is in the context of an object, so we have access to that object and the ```this``` binding. But when we break it out to a function we lose that context, the context does not get transferred. This is now a regular function and regular functions have undefined for ```this``` by default. This is not specific for React but instead all Vanilla Javascript, JQuery etc have this issue.
+  ```javascript
+  const getName = obj.getName //TypeError: undefined is not an object (evaluating 'this.name')
+  console.log(getName())
+  ```
+- What we need to do is to set the ```this``` binding in certain situations. For this we can use the ```bind``` method available on functions in Javascript. In the first argument we can pass the ```this``` context
+  ```javascript
+  const obj = {
+    name: 'Rocio',
+    getName() {
+      return this.name
+    }
+  }
+  const getName = obj.getName.bind(obj) //now it's bind 
+  console.log(getName()) //prints Rocio
+  ```
+- We can actually pass anything we want as context
+  ```javascript
+  const getName = obj.getName.bind({ name: 'Rossy44'}) //changes the context
+  console.log(getName()) // prints Rossyp44
+  ```
+- Event handling is one of those situations where Javascript loses the binding to ```this```
+  ```javascript
+  class Options extends React.Component {
+    handleRemoveAll() {
+      console.log(this.props.options) //TypeError: undefined is not an object (evaluating 'this.props')
+      alert('handleRemoveAll')
+    }
+    render() {
+      return (
+        <div>
+          <button onClick={this.handleRemoveAll}>Remove All</button>
+          {
+            this.props.options.map((option) => <Option key={option} optionText={option} />)
+          }
+        </div>
+      );
+    }
+  }
+  ```
+- By doing this, we're doing ```handleRemoveAll()``` to have the same binding as ```render()``` does
+  ```javascript
+  class Options extends React.Component {
+    handleRemoveAll() {
+      console.log(this.props.options)
+      alert('handleRemoveAll')
+    }
+    render() { //render is not an event handler so its binding is OK
+      return (
+        <div>
+          <button onClick={this.handleRemoveAll.bind(this)}>Remove All</button>
+          {this.props.options.map((option) => <Option key={option} optionText={option} />)}
+        </div>
+      );
+    }
+  }
+  ```
+- This technique works but it's a little inefficient, it requires us to rerun ```bind``` anytime the component re-renders and because components re-render often this can get a bit expensive
+- A better approach is to override the constructor function for the React Component
+  ```javascript
+  class Options extends React.Component {
+    constructor(props) { //gets called with props
+      super(props) //important to do this
+      this.handleRemoveAll = this.handleRemoveAll.bind(this) 
+      //now the context is correct and we only have to do this once
+    }
+    handleRemoveAll() {
+      console.log(this.props.options)
+      alert('handleRemoveAll')
+    }
+    render() {
+      return (
+        <div>
+          <button onClick={this.handleRemoveAll}>Remove All</button>
+          {this.props.options.map((option) => <Option key={option} optionText={option} />)}
+        </div>
+      );
+    }
+  }
+  ```
+
+
+
+
+  
 <hr>  
   -
   -
