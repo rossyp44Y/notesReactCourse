@@ -43,6 +43,9 @@ React Course - Udemy - Andrew Mead
 - [More than one state](#more-than-one-state)
 - [Summary props vs state](#summary-props-vs-state)
   - [State](#state-1)
+- [Stateless Functional Components](#stateless-functional-components)
+  - [Comparison between Class based and Functional components - CC vs FC](#comparison-between-class-based-and-functional-components---cc-vs-fc)
+- [Default props](#default-props)
 
 <!-- /TOC -->
 
@@ -1356,9 +1359,53 @@ data and the component is gonna take care of re-rendering itself
 ## State
 ![State](./img/state.png)
 
+# Stateless Functional Components
+- Used for components that are very simple and do not need to keep state. Common for simple presentational components
+- Functional components are functions instead of classes
+- The inside of the function is very similar to the render method in a class component. Must return the JSX to present in the screen
+- The usage of a Functional Component is exactly the same as a Class Component
+  ```javascript
+  const User = () => {
+    return (
+      <div>
+        <p>Name: </p>
+        <p>Age: </p>
+      </div>
+    );
+  }
+  ReactDOM.render(<User />, document.getElementById('app'))
+  ```
+- Functional components do not have access to ```this```
+- Functional components do not have state but they still can get access to ```props``` passed in. props are passed as the first argument to the function
+  ```javascript
+  const User = (props) => {
+    return (
+      <div>
+        <p>Name: {props.name}</p>   {/* in Class components we use this.props.name */}
+        <p>Age: {props.age}</p>
+      </div>
+    );
+  }
+  {/* note that age is passed in as an expression */}
+  ReactDOM.render(<User name="rocio" age={38} />, document.getElementById('app'))
+  ```
+## Comparison between Class based and Functional components - CC vs FC
+- FC are faster tha CC. We should use FC anywhere we can
+- FC are a bit easier to read and write
+- FC are easier to test
 
-
-
+# Default props
+- Allow us to define defaults for props on both Class based components as well as Functional components. In case a prop is no passed in to the component, React will use the default value instead
+- Default props is an object assigned to the Component's deafaultProps
+  ```javascript
+  Header.defaultProps = {
+    title: 'Some Default!'
+  }
+  ```
+- If the component is used with providing a ```title```, the default value is used
+  ```javascript
+  <Header subtitle={subtitle} />
+  ```
 
 <hr>  
   -
