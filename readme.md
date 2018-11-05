@@ -35,6 +35,14 @@ React Course - Udemy - Andrew Mead
   - [props](#props)
   - [Event handling](#event-handling)
   - [Method Binding](#method-binding)
+- [State](#state)
+  - [Setting up state](#setting-up-state)
+    - [Example](#example)
+- [Upstream communication](#upstream-communication)
+- [Pass data upstream](#pass-data-upstream)
+- [More than one state](#more-than-one-state)
+- [Summary props vs state](#summary-props-vs-state)
+  - [State](#state-1)
 
 <!-- /TOC -->
 
@@ -795,6 +803,7 @@ user4.printPlacesLived();
 
 ## props
 - Allow components to communicate with one another. With props we can establish one way communication between a Parent and a Child components
+- Props are read-only
 - Setting props is similar to setting key-value pairs in HTML attributes
 - This is a way to make the Component more flexible and pass data as we need
 - props names can be anything eg ```<Header title="Test Title"```
@@ -1046,10 +1055,311 @@ user4.printPlacesLived();
   }
   ```
 
+# State
+- Component state allows our components to manage some data (object with various key-value pairs) and when that data changes the component will automatically re-render to reflect those changes 
+- Previously (jsx-indecision) we manually called a render method every time we needed to update something on the screen. With component state all we have to do is manipulate the 
+data and the component is gonna take care of re-rendering itself
+
+## Setting up state
+1. Setup default state object (object with variables in zero, empty arrays etc)
+2. Component rendered with default state values (*)
+3. Change state based on event (button click, network request ready etc)
+4. Component re-rendered using new state values (*)
+5. Start again at 3
+
+(*) behind the scenes
+
+### Example
+- Step 1
+  ```javascript
+  class Counter extends React.Component {
+    constructor(props) {
+      super(props)
+      //step1 - setting up default state object
+      this.state = {
+        count: 0
+      }
+    }
+    ...
+  }
+  ```
+- Step 2
+  ```javascript
+  render() {
+    return (
+      <div>
+        {/* step2 - component rendered with default state values */}
+        <h1>Count: {this.state.count}</h1>
+        <button onClick={this.handleAddOne}>+1</button>
+        <button onClick={this.handleMinusOne}>-1</button>
+        <button onClick={this.handleReset}>reset</button>
+      </div>
+    );
+  }
+  ```
+- Step 3
+  ```javascript
+  handleAddOne() {
+    //step3 - change state base on event
+    //we can't just update the this.state object instead we call this.setState method
+    //first parameter is a function that returns the new state and we get access to the previous state
+    this.setState((prevState) => {
+      return {
+        count: prevState.count + 1
+      }
+    })
+  }
+  ```
+- Step 4 happens automatically after setting the new state
+- When setting the new state we provide just the ones we need to change, the rest remain the same
+- We might not need the previous state and that's also fine
+  ```javascript
+  handleReset() {
+    //no previous state needed
+    this.setState(() => {
+      return {
+        count: 0
+      }
+    })
+  }
+  ```
+- React allows to pass an object to setState instead of a function and it might bring issues specially when the previous state is needed. There will be inconsistency in the result because setState is asynchronous. Even if we don't need the previousState the recommended way is to pass a function as React might deprecate the alternative.
+- Complete Counter example
+  ```javascript
+  class Counter extends React.Component {
+    constructor(props) {
+      super(props)
+      //assign to themselves but rebinding the context
+      //bound to the correct component instance when the callback eventually fires
+      this.handleAddOne = this.handleAddOne.bind(this)
+      this.handleMinusOne = this.handleMinusOne.bind(this)
+      this.handleReset = this.handleReset.bind(this)
+      //step1 - setting up default state object
+      this.state = {
+        count: 0
+      }
+    }
+    handleAddOne() {
+      //step3 - change state base on event
+      //we can't just update the this.state object instead we call this.setState method
+      //first parameter is a function that returns the new state and we get access to the previous state
+      this.setState((prevState) => {
+        return {
+          count: prevState.count + 1
+        }
+      })
+    }
+    handleMinusOne() {
+      this.setState((prevState) => {
+        return {
+          count: prevState.count - 1
+        }
+      })
+    }
+    handleReset() {
+      //no previous state needed
+      this.setState(() => {
+        return {
+          count: 0
+        }
+      })
+    }
+    render() {
+      return (
+        <div>
+          {/* step2 - component rendered with default state values */}
+          <h1>Count: {this.state.count}</h1>
+          <button onClick={this.handleAddOne}>+1</button>
+          <button onClick={this.handleMinusOne}>-1</button>
+          <button onClick={this.handleReset}>reset</button>
+        </div>
+      );
+    }
+  }
+  ReactDOM.render(<Counter />, document.getElementById('app'))
+  ```
+
+# Upstream communication
+- props enables one way communication from parent components to a child, but children can't pass props upstream. To solve this problem we're gonna pass functions in as props. So, the parents defines the function and its behavior, and the children can use it to execute the task.
+- Example. **Remove All** button (in <Options /> component) need to wipe up one piece of state (options array)
+  - Define function and behavior in the parent and pass the function to the Child through props
+    ```javascript
+    class IndecisionApp extends React.Component {
+      constructor(props) {
+        super(props)
+        this.handleDeleteOptions = this.handleDeleteOptions.bind(this)
+        this.state = {
+          options: ['thing one', 'thing two', 'thing three']
+        }
+      }
+      //Parent define function and behavior
+      handleDeleteOptions() {
+        this.setState(() => {
+          return {
+            options: []
+          }
+        })
+      }
+      render() {
+        return (
+          <div>
+            <Options 
+              options={this.state.options} 
+              /* { Passing the Parent's function to the Child through props } */
+              handleDeleteOptions={this.handleDeleteOptions} 
+            />
+          </div>
+        );
+      }
+    }
+    ```
+  - Wire up the Reference to the Parent's method in the Child so that when the event is fired the method is called
+    ```javascript
+    class Options extends React.Component {
+      render() {
+        return (
+          <div>
+            /* { Doing Something in the Parent } */
+            <button onClick={this.props.handleDeleteOptions}>Remove All</button>
+            {this.props.options.map((option) => <Option key={option} optionText={option} />)}
+          </div>
+        );
+      }
+    }
+    ```
+# Pass data upstream
+- We still pass down a function, but we define a parameter so that the child can send data to the parents through the parameters list
+  ```javascript
+  //In the parent
+  class IndecisionApp extends React.Component {
+    constructor(props) {
+      super(props)
+      this.handleAddOption = this.handleAddOption.bind(this)
+      this.state = {
+        options: []
+      }
+    }
+    handleAddOption(option) {
+      this.setState((prevState) => {    
+        return {
+          //we don't want to manipulate prevState or state that's why we don't use push
+          //concat return a new array without manipulating the old ones
+          options: prevState.options.concat(option) // we can pass an array or an individual value
+        } 
+      })
+    }
+    ...
+  }
+  ```
+  ```javascript
+  //In the child
+  class AddOption extends React.Component {
+    constructor(props) {
+      super(props)
+      this.handleAddOption = this.handleAddOption.bind(this)
+    }
+    handleAddOption(e) {
+      e.preventDefault()
+      const option = e.target.elements.option.value.trim()
+      if (option) {
+        this.props.handleAddOption(option) //calling parent method and passing option upstream
+      }
+    }
+    render() {
+      return (
+        <div>
+          <form onSubmit={this.handleAddOption}>
+            <input type="text" name="option" />
+            <button>Add Option</button>
+          </form>
+        </div>
+        
+      );
+    }
+  }
+  ```
+
+# More than one state
+- Each component (class) can have its own state. This example uses state to track errors
+  ```javascript
+  //In the parent
+  class IndecisionApp extends React.Component {
+    constructor(props) {
+      super(props)
+      this.handleAddOption = this.handleAddOption.bind(this)
+      this.state = {
+        options: []
+      }
+    }
+    handleAddOption(option) { //will return undefined if all good otherwise a message
+      if (!option) {
+        return 'Enter valid value to add item'
+      } else if(this.state.options.indexOf(option) > -1) {
+        return 'This option already exists'
+      }
+      this.setState((prevState) => {    
+        return {
+          //we don't want to manipulate prevState or state that's why we don't use push
+          //concat return a new array without manipulating the old ones
+          options: prevState.options.concat(option) // we can pass an array or an individual value
+        } 
+      })
+    }
+    render() {
+      const title = 'Indecision'
+      const subtitle = 'Put your life in the hands of a computer'
+      return (
+        <div>
+          <AddOption handleAddOption={this.handleAddOption} />
+        </div>
+      );
+    }
+  }
+  ```
+  ```javascript
+  //In the child
+  class AddOption extends React.Component {
+    constructor(props) {
+      super(props)
+      this.handleAddOption = this.handleAddOption.bind(this)
+      this.state = {
+        error: undefined
+      }
+    }
+    handleAddOption(e) {
+      e.preventDefault()
+      const option = e.target.elements.option.value.trim()
+      const error = this.props.handleAddOption(option) //calls parent's method
+      this.setState(() => {
+        //same as return { error: error } but ES6 provides shorthand
+        return { error }
+      })
+    }
+    render() {
+      return (
+        <div>
+          { /* if there's an error show it */ }
+          {this.state.error && <p>{this.state.error}</p>} 
+          <form onSubmit={this.handleAddOption}>
+            <input type="text" name="option" />
+            <button>Add Option</button>
+          </form>
+        </div>
+        
+      );
+    }
+  }
+  ```
+# Summary props vs state
+![Props vs State](./img/props_vs_state.png)
+
+## State
+![State](./img/state.png)
 
 
 
-  
+
+
 <hr>  
   -
   -
