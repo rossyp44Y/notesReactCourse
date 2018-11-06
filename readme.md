@@ -53,6 +53,11 @@ React Course - Udemy - Andrew Mead
   - [componentDidUpdate](#componentdidupdate)
   - [componentWillUnmount](#componentwillunmount)
 - [LocalStorage](#localstorage)
+- [Webpack](#webpack)
+- [Changing project to use Webpack](#changing-project-to-use-webpack)
+  - [Move away from using Global modules](#move-away-from-using-global-modules)
+  - [Install and minimal setup webpack](#install-and-minimal-setup-webpack)
+  - [ES6 import/export](#es6-importexport)
 
 <!-- /TOC -->
 
@@ -1514,12 +1519,160 @@ https://reactjs.org/docs/react-component.html
   }
   ```
 
-<hr>
-  -
-  -
-  -
-  -
-  -
-  -
-<hr>
+# Webpack
+- Webpack is an asset bundler. Allow us to take all the stuff that makes up our application, combine that with stuff from third party libraries and at the end of the day spit out a single javascript file
+- We'll be able to break up our app into multiple smaller files. For example a file for each component
+- In out HTML file we just need to reference one single bundle file instead of as many javascript files we have
+- The app only needs to request one file, saving fetching/network time
+- Gulp and Grunt are other tools that bundle all javascript code together similar to webpack. The way webpack does it, is unique though. Webpack breaks up all the files in our application into their own little islands. These islands can then communicate using the ES6 import/export syntax. This makes our app scalable
+  
+![Webpack](./img/webpack.png)
 
+# Changing project to use Webpack
+
+## Move away from using Global modules
+- Remove global dependencies
+  ```
+  yarn global remove babel-cli live-server 
+  ```
+- Install packages as local dependencies
+  ```
+  yarn add live-server babel-cli@6.24.1
+  ```
+  This dependencies are now in node_modules and were added to package.json.
+  In the terminal we still don;t have access to these libraries but that's OK. Instead of running commands in the terminal we're going to set up scripts inside of package.json
+  
+- Define "scripts" as a new property onto the root object. We don;t need to run long commands ever again. We just call the scripts we've defined
+  ```javascript
+  package.json
+  { 
+    "name": "indecision-app",
+    ...
+    "scripts": {
+      "serve": "live-server public/",
+      "build": "babel src/app.js --out-file=public/scripts/app.js --presets=env,react --watch"
+    },
+    "dependencies": {
+      "babel-cli": "6.24.1",
+      "babel-preset-env": "1.5.2",
+      "babel-preset-react": "6.24.1",
+      "live-server": "^1.2.0"
+    }
+  }
+  ```  
+- Run the scripts by typing ```yarn run serve``` or ```yarn run build``` in the terminal. At this point we're still running one terminal tab with the server serving the public folder and another tab running babel, generating  public/scripts/app.js with the compiled code that will work on old browsers as well as on the new ones
+
+## Install and minimal setup webpack
+
+- https://webpack.js.org/concepts/entry-points/#single-entry-shorthand-syntax
+- Install webpack
+  ```
+  yarn add webpack@3.1.0
+  ```
+- Setup a new script in package.json with the webpack command. Webpack can run babel for us so we won't need two separate build scripts 
+  ```javascript
+  "scripts": {
+    "serve": "live-server public/",
+    "build": "webpack --watch",
+    "build-babel": "babel src/app.js --out-file=public/scripts/app.js --presets=env,react --watch"
+  },
+  ```
+- Webpack configuration goes on its own file in the root of the project ```webpack.config.js```
+- module.exports is used to expose this object to another file - node syntax 
+- ```__dirname``` contains the path to the current location (indecisionApp project folder). Add ```console.log(__dirname)``` to ```webpack.config.js``` and run it using ```node webpack.config.js``` in the terminal
+- To concatenate the public folder we need to use the node path module and the function join
+  ```javascript
+  const path = require('path')
+  console.log(path.join(__dirname, 'public'))
+  ```
+- Minimal webpack setup
+  ```javascript
+  const path = require('path')
+
+  module.exports = { //expose this object to another file - node syntax
+    entry: './src/app.js',
+    output: {
+      path: path.join(__dirname, 'public'), //absolute path on your machine to the public folder
+      filename: 'bundle.js'
+    }
+  }
+  ```
+- We also need to change the .html file to point to the correct file and delete old scripts
+  ```html
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="/bundle.js"></script>
+  </body>
+  </html>
+  ```
+- Run webpack with ```yarn run build``` in the terminal
+
+## ES6 import/export
+- Load files we wrote
+- Load third party modules such as react and react-dom
+- ES6 import/export are setup by default in webpack, the basic configuration already supports it
+- This code will run whatever code exists in utils.js and then its own console.log
+  ```javascript
+  import './utils.js'
+  console.log("app.js is running")
+  ```
+- With webpack each file maintains its own local scope, if we want to allow another file to use something we need to use export
+- There're two types of exports.
+  - Every file can have a single default export
+  - Every file can have as many named exports as we like
+- Named exports, we grab the things we need. we don't need to import everything is exposed to us
+  ```javascript
+  //utils.js
+  const square = (x) => x * x
+  const add = (a, b) => a + b
+  export { square, add }
+
+  //app.js
+  import { square, add } from './utils' //names have to match
+  console.log(square(3))                //we can also include the ext './utils.js'
+  console.log(add(5, 8))
+  ```
+  - We can also export the individual variables/functions as we define them (inline) as opposite to all together at the end
+    ```javascript
+    //utils.js
+    export const square = (x) => x * x
+    export const add = (a, b) => a + b
+
+    //app.js
+    import { square, add } from './utils' //names have to match
+    console.log(square(3))
+    console.log(add(5, 8))
+    ```
+- Default exports. Use the syntax ```as default```. When importing, need to go before the named exports
+  ```javascript
+  //utils.js
+  const square = (x) => x * x
+  const add = (a, b) => a + b
+  const subtract = (a, b) => a - b
+  export { square, add, subtract as default }
+
+  //app.js
+  import subtract, { square, add }  from './utils'
+  console.log(square(3))
+  console.log(add(5, 8))
+  console.log(subtract(100, 12))
+  ```
+  - When grabbing the default export we can actually use whatever name we want
+    ```javascript
+    import theSubtract from './utils'
+    console.log(theSubtract(100, 10))
+    ```
+  - Inline
+    ```javascript
+    //first way
+    const subtract = (a, b) => a - b
+    export default subtract 
+
+    //second way
+    export default (a, b) => a - b
+    ```
+- There are no hard rules a sto when use Named exports or Default exports. Usually if a file has just one big element that need to export we use default export otherwise if there're several pieces we need to export use named exports
