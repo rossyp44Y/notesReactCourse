@@ -46,6 +46,13 @@ React Course - Udemy - Andrew Mead
 - [Stateless Functional Components](#stateless-functional-components)
   - [Comparison between Class based and Functional components - CC vs FC](#comparison-between-class-based-and-functional-components---cc-vs-fc)
 - [Default props](#default-props)
+- [Return an object from an arrow function using shorthand syntax](#return-an-object-from-an-arrow-function-using-shorthand-syntax)
+- [Remove individual option](#remove-individual-option)
+- [Lifecycle methods](#lifecycle-methods)
+  - [componentDidMount](#componentdidmount)
+  - [componentDidUpdate](#componentdidupdate)
+  - [componentWillUnmount](#componentwillunmount)
+- [LocalStorage](#localstorage)
 
 <!-- /TOC -->
 
@@ -1230,6 +1237,7 @@ data and the component is gonna take care of re-rendering itself
       }
     }
     ```
+    
 # Pass data upstream
 - We still pass down a function, but we define a parameter so that the child can send data to the parents through the parameters list
   ```javascript
@@ -1353,6 +1361,7 @@ data and the component is gonna take care of re-rendering itself
     }
   }
   ```
+  
 # Summary props vs state
 ![Props vs State](./img/props_vs_state.png)
 
@@ -1389,14 +1398,16 @@ data and the component is gonna take care of re-rendering itself
   {/* note that age is passed in as an expression */}
   ReactDOM.render(<User name="rocio" age={38} />, document.getElementById('app'))
   ```
+  
 ## Comparison between Class based and Functional components - CC vs FC
-- FC are faster tha CC. We should use FC anywhere we can
+- FC are faster than CC. We should use FC anywhere we can
 - FC are a bit easier to read and write
 - FC are easier to test
+- CC have lifecycle methods that fire at various times in a given component's life. FC don't have this.
 
 # Default props
 - Allow us to define defaults for props on both Class based components as well as Functional components. In case a prop is no passed in to the component, React will use the default value instead
-- Default props is an object assigned to the Component's deafaultProps
+- Default props is an object assigned to the Component's defaultProps
   ```javascript
   Header.defaultProps = {
     title: 'Some Default!'
@@ -1407,7 +1418,103 @@ data and the component is gonna take care of re-rendering itself
   <Header subtitle={subtitle} />
   ```
 
-<hr>  
+# Return an object from an arrow function using shorthand syntax
+- We need to wrap the function body with parenthesis 
+- Object uses {} but the arrow function will interpret the braces as the function body
+  ```javascript
+  const num = () => 12 + 2    //return a number
+  const num = () => [1, 2, 3] //return an array
+  const num = () => ({})      //return empty object
+  const num = () => {}        //arrow function that returns nothing - undefined
+  this.setState(() => ({ options: [] })) //set state as an object that contains the property options as an empty array
+  ```
+
+# Remove individual option
+- A prop can be passed several levels down
+- The onClick in Option has to be managed further because handleDeleteOption is expecting the text of the option to remove not the event
+  ```javascript
+  //in IndecisionApp
+  handleDeleteOption(optionToRemove) {
+    this.setState((prevState) => ({
+      options: prevState.options.filter((option) => optionToRemove !== option)
+    }))
+  }
+  <Options 
+    handleDeleteOption={this.handleDeleteOption}
+  />
+  ...
+  //in Options
+  <Option 
+    handleDeleteOption={props.handleDeleteOption}
+  />
+  ...
+  //in Option
+  const Option = (props) => {
+    return (
+      <div>
+        {props.optionText}
+        <button
+          onClick={(e) => {
+            props.handleDeleteOption(props.optionText)
+          }}
+        >
+          remove
+        </button>
+      </div> 
+    );
+  }
+  ```
+
+# Lifecycle methods
+https://reactjs.org/docs/react-component.html
+
+## componentDidMount
+- Fires when the component first get mounted to the DOM
+- We never call this methods explicitly, React will call them
+  
+## componentDidUpdate
+- Fires after the component updates. eg. state values change or prop values change
+- Inside this method we have access to ```this.state``` and ```this.props``` which contains the new values
+- We also have access to previous state and props as arguments in the method
+
+## componentWillUnmount
+- Fires just before the component goes away off the screen
+
+# LocalStorage
+- Data saved in the format key-value pairs
+- localStorage is going to persist between page loads
+- save data: ```localStorage.setItem('key', 'value')```
+- get data: ```localStorage.getItem('key')```
+- remove data: ```localStorage.removeItem('key')```
+- clear ALL data: ```localStorage.clear()```
+- localStorage only works with string data. If we pass something different like a number it will convert it to string and we need to parse it back using ```parseInt(num)``` or whatever data type we're working with. We can combine this with ```isNaN()``` to validate it's a number
+- JSON is a string representation of a javascript object, we can use JSON to save/retrieve more complex data
+- ```JSON.stringify({ age: 26 })``` takes a regular javascript object and returns the string representation
+- ```JSON.parse(json)``` takes the string representation and returns a true javascript object
+- localStorage example
+  ```javascript
+  componentDidMount() {
+    try { //handling malformed JSON
+      const json = localStorage.getItem('options')
+      const options = JSON.parse(json)
+      if (options) { //checking there's data
+        this.setState(() => ({ options }))
+      } 
+    } catch (e) {
+      // Do nothing at all
+    }
+  }
+  componentDidUpdate(prevProps, prevState) {
+    //componentDidUpdate fires even when data is the same
+    //the if avoids updating when there's not needed
+    if (prevState.options.length != this.state.options.length) {
+      const json = JSON.stringify(this.state.options)
+      localStorage.setItem('options', json)
+    }
+  }
+  ```
+
+<hr>
   -
   -
   -
