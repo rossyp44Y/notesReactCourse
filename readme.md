@@ -58,6 +58,13 @@ React Course - Udemy - Andrew Mead
   - [Move away from using Global modules](#move-away-from-using-global-modules)
   - [Install and minimal setup webpack](#install-and-minimal-setup-webpack)
   - [ES6 import/export](#es6-importexport)
+- [Import npm modules](#import-npm-modules)
+- [Adding React via npm modules](#adding-react-via-npm-modules)
+- [Setting up Babel with Webpack](#setting-up-babel-with-webpack)
+- [One component per file](#one-component-per-file)
+- [Source Maps with Webpack](#source-maps-with-webpack)
+- [Webpack Dev Server](#webpack-dev-server)
+- [ES6 class properties](#es6-class-properties)
 
 <!-- /TOC -->
 
@@ -1674,5 +1681,244 @@ https://reactjs.org/docs/react-component.html
 
     //second way
     export default (a, b) => a - b
+    export default class AddOption {}
     ```
 - There are no hard rules a sto when use Named exports or Default exports. Usually if a file has just one big element that need to export we use default export otherwise if there're several pieces we need to export use named exports
+
+# Import npm modules
+- We can use code we didn't write in our application. That's the case of react and react-dom as well as many libraries we rely upon to achieve common tasks: uuid, validator etc
+- We need to install -> import -> use
+- ```yarn add validator```
+- Inside import statements paths
+  - ./ -> relative files inside our application
+  - just the name -> webpack is going to look for a module with the same name in the node_modules folder eg. ```import validator from 'validator'```
+  - ```import validator from 'validator'``` //default export
+- Usage
+  ```javascript
+  import validator from 'validator'
+  console.log(validator.isEmail('test@gmail.com'))
+  ```
+
+# Adding React via npm modules 
+- Install
+  ```javascript
+  yarn add react react-dom
+  ```
+- Import and Use
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  //we can't use JSX here because we haven't set babel in webpack
+  //as a workaround we're using React.createElement
+  const template = React.createElement('p', {}, 'testing 123')
+  ReactDOM.render(template, document.getElementById('app'))
+  ```
+
+# Setting up Babel with Webpack
+- We need a loader in webpack to customize the behavior of webpack when it loads a given file
+- Install
+  ```javascript
+  yarn add babel-core@6.25.0 babel-loader@7.1.1
+  ```
+- We need to tell webpack to run babel. We use babel-loader, for every file that ends in .js excluding files inside node_modules folder.
+  ```javascript
+  //webpack.config.js
+  module.exports = { //expose this object to another file - node syntax
+    entry: './src/app.js',
+    output: {
+      path: path.join(__dirname, 'public'), //absolute path on your machine to the public folder
+      filename: 'bundle.js'
+    },
+    module: {
+      rules: [{
+        loader: 'babel-loader',
+        test: /\.js$/,   //files that ends in .js
+        exclude: /node_modules/
+      }]
+    }
+  }
+
+  //.babelrc - set presets
+  {
+    "presets": [
+      "env", 
+      "react"
+    ]
+  }
+  ```
+- Now we can use JSX inside our app
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const template = <p>This is JSX from WEBPACK</p>
+  ReactDOM.render(template, document.getElementById('app'))
+  ```
+- At this point we're still running two terminal tabs. One with ```yarn run serve``` and another with ```yarn run build```
+
+# One component per file
+- Name each file as the class name eg. AddOption.js
+- In AddOption.js import React and export the class
+  ```javascript
+  import React from 'react'
+
+  export default class AddOption extends React.Component {
+    constructor(props) {
+      super(props)
+      ....
+  }
+  ``` 
+- In app.js import AddOption, after importing React and ReactDOM
+  ```javascript
+  import AddOption from './components/AddOption'
+  ```
+- In the case of a Functional component we need to add the export default after the function
+  ```javascript
+  import React from 'react'
+
+  const Option = (props) => {
+    return (
+      ...
+    );
+  }
+  export default Option
+
+  // we can also do export default (props) => { return (...) } but React dev tools will show the name of the component as Unknown because we didn't give it a name
+
+  ```
+
+# Source Maps with Webpack
+- https://webpack.js.org/configuration/devtool/
+- Add the property devtool to webpack config file
+  ```javascript
+  devtool: 'cheap-module-eval-source-map'
+  ```
+
+# Webpack Dev Server
+- Similar to live-server but comes with nice to have features specific to webpack
+  ```javascript
+  yarn add webpack-dev-server@2.5.1
+  ```
+- add to webpack config:
+  ```javascript
+  devServer: {
+    contentBase: path.join(__dirname, 'public') 
+  }
+  ```
+- add to package.json
+  ```javascript
+  "scripts": {
+      "build": "webpack",
+      "dev-server": "webpack-dev-server"
+    },
+  ```
+- Now we don't need to run live server in one tab and webpack in another. ```dev-server``` script will take care of both.
+- Run with ```yarn run dev-server```
+- Dev Server does not write the bundle file to disk, it serves from memory making the process faster. For production we need the physical file, so we run the other script ```yarn run build```
+
+# ES6 class properties
+- Cutting-edge feature to customize how we use classes in our app
+- This only applies to class based components
+- We need a new babel plugin for this
+- Class properties syntax allow us to add properties right onto our classes as opposed to just methods. Currently if we want to setup something simple like a property we have to go ahead and create the constructor function first. That's super tedious and it creates more work than we really need.
+- Using this new syntax we're also going to be able to avoid the need to manually bind all of our event handlers
+- install babel plugin
+  ```javascript
+  yarn add babel-plugin-transform-class-properties@6.24.1
+  ```
+- configure plugin inside .babelrc
+```javascript
+  {
+    "presets": [
+      "env", 
+      "react"
+    ],
+    "plugins": [
+      "transform-class-properties"
+    ]
+  }
+  ```
+- We no longer need the constructor to set class properties
+  ```javascript
+  class OldSyntax {
+    constructor() {
+      this.name = 'Mike'
+    }
+  }
+  const oldSyntax = new OldSyntax()
+  console.log(oldSyntax)
+  //-----
+  class NewSyntax {
+    //pairs key = value - don't include variable type var/let/const
+    name = 'Jen'
+  }
+  const newSyntax = new NewSyntax()
+  console.log(newSyntax)
+  ```
+- The second advantage of using class properties is the ability to create functions that aren't going to have their binding messed up. So we don't need to bind them manually.
+  ```javascript
+  class OldSyntax {
+    constructor() {
+      this.name = 'Mike'
+    }
+    getGreeting() {
+      return `Hi. my name is ${this.name}.`
+    }
+  }
+  const oldSyntax = new OldSyntax()
+  console.log(oldSyntax.getGreeting()) //works fine
+  const getGreeting = oldSyntax.getGreeting //breaks the binding
+  console.log(getGreeting()) //Cannot read property 'name' of undefined
+  ```
+- To fix this we needed to bind it
+  ```javascript
+  class OldSyntax {
+    constructor() {
+      this.name = 'Mike'
+      this.getGreeting = this.getGreeting.bind(this)
+    }
+    getGreeting() {
+      return `Hi. my name is ${this.name}.`
+    }
+  }
+  const oldSyntax = new OldSyntax()
+  console.log(oldSyntax.getGreeting()) //works fine
+  const getGreeting = oldSyntax.getGreeting //now binding is OK
+  console.log(getGreeting()) //works fine
+  ```
+- With class properties we will not break the binding by using arrow functions 
+  ```javascript
+  class NewSyntax {
+    //pairs key = value - no variable type var/let/const
+    name = 'Jen'
+    getGreeting = () => { //arrow function
+      //arrow functions don't have their own 'this' binding
+      //instead they just use whatever 'this' binding is in the parent scope
+      //and for classes that's the class instance
+      return `Hi. my name is ${this.name}.`
+    }
+  }
+  const newSyntax = new NewSyntax()
+  const newGetGreeting = newSyntax.getGreeting //this doesn't break the binding
+  console.log(newGetGreeting()) //works fine
+  ```
+- In the app
+  ```javascript
+  import React from 'react'
+
+  export default class AddOption extends React.Component {
+    state = { //now a class property
+      error: undefined
+    }
+    handleAddOption = (e) => { //converted to arrow function - now a class property
+      e.preventDefault()
+      ...
+    }
+    render() {
+      return (
+        ...
+      );
+    }
+  }
+  ```
