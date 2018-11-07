@@ -67,6 +67,13 @@ React Course - Udemy - Andrew Mead
 - [ES6 class properties](#es6-class-properties)
 - [Passing Children to Component](#passing-children-to-component)
 - [React modal - Third party react component](#react-modal---third-party-react-component)
+- [Styling our App](#styling-our-app)
+  - [Setup webpack to include CSS files](#setup-webpack-to-include-css-files)
+  - [Webpack and SCSS](#webpack-and-scss)
+  - [Styling ```<Header />``` component](#styling-header--component)
+  - [CSS reset](#css-reset)
+- [Mobile considerations](#mobile-considerations)
+- [favicon](#favicon)
 
 <!-- /TOC -->
 
@@ -2108,3 +2115,232 @@ https://reactjs.org/docs/react-component.html
     contentLabel="Selected Option"
   >
   ```
+
+# Styling our App
+
+## Setup webpack to include CSS files
+- Install loaders for webpack ```yarn add style-loader css-loader```
+- Add another rule in webpack config file to load css and to inject styles in our app
+  ```javascript
+  ...
+  module: {
+    rules: [{
+      loader: 'babel-loader',
+      test: /\.js$/,   //files that ends in .js
+      exclude: /node_modules/
+    }, {
+      test: /\.css$/,   //files that ends in .css
+      use: [  //an array of loaders
+        'style-loader',
+        'css-loader'
+      ]
+    }]
+  },
+  ...
+  ```
+- Start server again ```yarn run dev-server```
+- Just as a quick example: in app.js ```import './styles/styles.css'```
+- In src/styles/styles.css
+  ```css
+  * {
+    color: red;
+  }
+  ```
+
+## Webpack and SCSS
+- SCSS offers support for things like variables, mix-ins and others features that make writing your styles a whole lot easier
+- https://sass-lang.com is the language we'll be using
+- SCSS and Sass they both come from the exact same tool. They're just different ways to write your code. With SCSS we use semicolons and curly braces. with Sass we leave off semicolons and curly braces. We're going to use SCSS. https://sass-lang.com/guide
+- Rename style file to src/styles/styles.css
+- Change content to
+```scss
+  $brand-color: blue;
+  * {
+    color: $brand-color;
+  }
+  ```
+- We need to convert .scss to something browsers can understand
+- We need two more tools, one is a loader that when encounters a SCSS file goes ahead a compile it and the second one is the compiler itself ```yarn add sass-loader node-sass```
+- Add the new loader to webpack config and change the extension in the rule
+  ```javascript
+  module: {
+      rules: [{
+        loader: 'babel-loader',
+        test: /\.js$/,   //files that ends in .js
+        exclude: /node_modules/
+      }, {
+        test: /\.scss$/,   //files that ends in .scss
+        use: [  //an array of loaders
+          'style-loader',
+          'css-loader',
+          'sass-loader'
+        ]
+      }]
+    },
+  ```
+- Change the import in app.js to ```import './styles/styles.scss'```
+- At the end this injects an ```<style>``` tag in the page:
+  ```html
+  <head>
+    <title>Indecision App</title>
+    <style type="text/css">
+      * {
+        color: blue; 
+      }
+    </style>
+  </head>
+  ```
+
+## Styling ```<Header />``` component
+- Inside src/styles two folders base and components
+- In base add the file ```_base.scss``` the _ in the name means partial
+- In components add the file ```_header.scss```
+- In ```src/styles/styles.scss``` import the other files
+  ```scss
+  @import './base/base';
+  @import './components/header'
+  //we leave off the _ and the extension of the individual files
+  ```
+- In _base.scss we define shared styles
+  ```scss
+  // common units: pixels and rem. rem has better support for accessibility
+  // 1 rem equals 16px by default
+  html {
+    font-size: 62.5%; //helps the conversion between rem and px
+                      //instead of converting we use eg. 1.6rem meaning 16px
+  }
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 1.6rem; //equivalent to 16px
+  }
+  ```
+- We use BEM naming convention to name styles. Blocks, Elements (__), Modifiers(--)
+- http://getbem.com
+- We add the styles and the classes to the JSX of the component
+- In ```_header.scss```
+  ```scss
+  //this file provide the styles for the <Header /> component
+  .header {
+    background: #20222b;
+    color: white;
+    margin-bottom: 4.8rem; //equivalent to 48px
+    padding: 1.6rem 0; //16px above and below, 0 to the sides
+    /*   h1 { //selects h1 inside the div with class=header but we want to avoid nesting because complexity
+      color: red;
+    } */ 
+  }
+  //BEM
+  .header__title {
+    font-size: 3.2rem;
+    margin: 0;
+  }
+  .header__subtitle {
+    color: #a5afd7;
+    font-size: 1.6rem;
+    font-weight: 500;
+    margin: 0;
+  }
+  ```
+- In ```src/components/Header.js```
+  ```javascript
+  import React from 'react'
+  const Header = (props) => (
+    <div className="header">
+      <h1 className="header__title">{props.title}</h1>
+      {props.subtitle && <h2 className="header__subtitle">{props.subtitle}</h2>}
+    </div>
+  );
+  Header.defaultProps = {
+    title: 'Indecision'
+  }
+  export default Header
+  ```
+
+## CSS reset
+- CSS reset makes sure that all browsers start from the same place. Each browser has their own set of default styles and if the starting point is not the same for all browsers they will look different
+- There are libraries that contain resets and manage all sorts of weird situations. Handle all of the edge cases for us and we don't have to worry about that sort of thing
+- The one we're going to be using is called **normalize css** - https://necolas.github.io/normalize.css/
+- Add to our project ```yarn add normalize.css```
+- To use it we need to import the library. In styles.scss
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+  import IndecisionApp from './components/IndecisionApp'
+  import 'normalize.css/normalize.css' //note that this file is css
+  import './styles/styles.scss'
+
+  ReactDOM.render(<IndecisionApp />, document.getElementById('app'))
+  ```
+- We removed the support for css in webpack. To add it we make the first **s** in **scss** optional by changing the rule test in webpack config file
+  ```javascript
+  test: /\.s?css$/,   //files that ends in .css or .scss
+  ```
+- We can pull out common colors, sizes etc to a file where we define variables for them. So if we have to tweak them we do it in just one place. Usually styles we are likely to reuse.
+  ```javascript
+  //_settings.scss
+  // Colors
+  $off-black: #20222b;
+
+  // _header.scss
+  .header {
+    background: $off-black;
+  }
+
+  // styles.scss - import setting as the first one so that the ones below can make use of things defined there
+  @import './base/settings';
+  @import './base/base';
+  @import './components/header'
+  ```
+- Inside .scss file we can use functions provided to us. eg. darken a color.  http://sass-lang.com/documentation/Sass/Script/Functions.html
+  ```scss
+  .big-button {
+    background-color: $purple;
+    border: none;
+    border-bottom: .6rem solid darken($purple, 10%) //darken is a saas/scss function we can use
+  }
+  ```
+- We use modifiers in BEM to tweak a css class. In the JSX element we use both classes.
+  ```javascript
+  // JSX
+  <button 
+      className="button button--link"
+      onClick={props.handleDeleteOptions} 
+    >
+  // scss
+  // Button
+  .button {
+    background: $purple;
+    border: none;
+    border-bottom: .3rem solid darken($purple, 10%);
+    color: white;
+    font-weight: 500;
+    padding: $s-size;
+  }
+
+  .button--link {
+    background: none;
+    border: none;
+    color: $off-white;
+    padding: 0;
+
+  }
+  ```
+
+# Mobile considerations
+- Use the device width instead of leaving white space around ```<meta name="viewport" content="width=device-width, initial-scale=1">```
+- Use media queries to target certain sizes
+  ```css
+  //media queries - css feature not sass feature
+  @media (min-width: $desktop-breakpoint) { 
+    .add-option {
+      flex-direction: row;
+    }
+    .add-option__input {
+      margin: 0 $s-size 0 0;
+    }
+  }
+  ```
+
+# favicon
+Add tag to the header of html file```<link rel="icon" type="image/png" href="/images/favicon.png"/>```
+
