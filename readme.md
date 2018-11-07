@@ -65,6 +65,8 @@ React Course - Udemy - Andrew Mead
 - [Source Maps with Webpack](#source-maps-with-webpack)
 - [Webpack Dev Server](#webpack-dev-server)
 - [ES6 class properties](#es6-class-properties)
+- [Passing Children to Component](#passing-children-to-component)
+- [React modal - Third party react component](#react-modal---third-party-react-component)
 
 <!-- /TOC -->
 
@@ -1785,7 +1787,15 @@ https://reactjs.org/docs/react-component.html
   export default Option
 
   // we can also do export default (props) => { return (...) } but React dev tools will show the name of the component as Unknown because we didn't give it a name
-
+  ```
+- Functional components can be simplified by using arrow functions shorthand syntax. Because all they do is to return something we can delete the return and the {} and just put the return value after the arrow 
+  ```javascript
+  const Header = (props) => (
+    <div>
+      <h1>{props.title}</h1>
+      {props.subtitle && <h2>{props.subtitle}</h2>}
+    </div>
+  );
   ```
 
 # Source Maps with Webpack
@@ -1921,4 +1931,180 @@ https://reactjs.org/docs/react-component.html
       );
     }
   }
+  ```
+
+# Passing Children to Component
+- Built-in children prop
+- Make it easy to pass in custom JSX to a given component
+- Imagine  we have a Layout component with consistent header and footer across pages but the content changes
+- A first approach is to pass the JSX we want to display as prop to the Layout component
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const Layout = (props) => {
+    return (
+      <div>
+        <p>header</p>
+        {props.content}
+        <p>footer</p>
+      </div>
+    );
+  }
+
+  const template = (
+    <div>
+      <h1>Page Title</h1>
+      <p>This is my page</p>
+    </div>
+  )
+
+  {/* Passing JSX in the component props */}
+  ReactDOM.render(<Layout content={template} />, document.getElementById('app'))
+  ```
+- Another way to do this is to split the self-closing tag and pass the JSX inside the opening and closing tags. This will be passed in as ```props.children```
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const Layout = (props) => {
+    return (
+      <div>
+        <p>header</p>
+        {props.children} { /* built-in children prop */}
+        <p>footer</p>
+      </div>
+    );
+  }
+  {/* split tag */}
+  ReactDOM.render(<Layout><p>This is inline</p></Layout>, document.getElementById('app'))
+  ```
+- This second way gives better context and the app is easier to read and maintain
+- Using parenthesis we can define multiple lines
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const Layout = (props) => {
+    return (
+      <div>
+        <p>header</p>
+        {props.children}
+        <p>footer</p>
+      </div>
+    );
+  }
+
+  ReactDOM.render((
+    <Layout>
+      <div>
+        <h1>Page Title</h1>
+        <p>This is my page</p>
+      </div>
+    </Layout>
+  ), document.getElementById('app'))
+  ```
+
+# React modal - Third party react component
+- https://github.com/reactjs/react-modal
+- Install
+  ```javascript
+  yarn add react-modal
+  ```
+- Restart App ```yarn run dev-server```
+- In ```<IndecisionApp />``` we need to track a new piece of state
+  ```javascript
+    state = {
+      options: [],
+      selectedOption: undefined
+    }
+  ```
+- We then pass it down from ```<IndecisionApp />``` to ```<OptionModal />``` as a prop
+  ```javascript
+  <OptionModal 
+    selectedOption={this.state.selectedOption}
+  />
+  ```
+- In ```<OptionModal />``` we use the prop to set the Modal's isOpen property
+  ```javascript
+  import React from 'react'
+  import Modal from 'react-modal'
+
+  const OptionModal = (props) => ( //using shorthand syntax
+    <Modal
+      isOpen={!!props.selectedOption} //double ! converts it to real boolean values
+      contentLabel="Selected Option"
+    >
+      <h3>Selected Option</h3>
+    </Modal>
+  );
+
+  export default OptionModal
+  ```
+- Finally in the method ```handlePick``` inside ```<IndecisionApp />``` instead of firing an alert, we change the piece of state we defined before: ```selectedOption```
+  ```javascript
+  handlePick = () => {
+      const randomNun = Math.floor(Math.random() * this.state.options.length)
+      const option = this.state.options[randomNun]
+      //alert(option)
+      this.setState(() => ({ //need to wrap the object in ()
+        selectedOption: option
+      }))
+    }
+  ```
+- Showing content inside the Modal
+  ```javascript
+  import React from 'react'
+  import Modal from 'react-modal'
+
+  const OptionModal = (props) => ( //using shorthand syntax
+    <Modal
+      isOpen={!!props.selectedOption} //double ! converts it to real boolean values
+      contentLabel="Selected Option"
+    >
+      <h3>Selected Option</h3>
+      {/* Modal's content */}
+      {props.selectedOption && <p>{props.selectedOption}</p>} 
+    </Modal>
+  );
+
+  export default OptionModal
+  ```
+- Closing Modal. Add a button. Add an event handler in ```<IndecisionApp />```, pass event handler down to ```<OptionModal />``` as a prop, on the button's onClick event reference the handler.
+  ```javascript
+  //handler in <IndecisionApp />
+  handleCloseModal = () => { //arrow function so that we don't have to bind 'this' manually
+    this.setState(() => ({ //need to wrap the object in () to implicitly return the object
+      selectedOption: undefined
+    }))
+  }
+  //pass handler from <IndecisionApp /> to <OptionModal />
+  <OptionModal 
+    selectedOption={this.state.selectedOption}
+    handleCloseModal={this.handleCloseModal}
+  />
+  // create button and bind it to the handler passed in. in <OptionModal />
+  import React from 'react'
+  import Modal from 'react-modal'
+
+  const OptionModal = (props) => ( //using shorthand syntax
+    <Modal
+      isOpen={!!props.selectedOption} //double ! converts it to real boolean values
+      contentLabel="Selected Option"
+    >
+      <h3>Selected Option</h3>
+      {props.selectedOption && <p>{props.selectedOption}</p>}
+      <button onClick={props.handleCloseModal}>Okay</button>
+    </Modal>
+  );
+
+  export default OptionModal
+  ```
+- Allow the Modal to be closed with the ESC key or clicking outside the modal. add ```onRequestClose```
+  ```javascript
+  <Modal
+    isOpen={!!props.selectedOption} //double ! converts it to real boolean values
+    onRequestClose={props.handleClearSelectedOption}
+    contentLabel="Selected Option"
+  >
   ```
