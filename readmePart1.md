@@ -1,7 +1,8 @@
 > markdown: https://guides.github.com/features/mastering-markdown/  
 > Preview: Chrome extension and QuickLook / space key on the file 
 
-React Course - Udemy - Andrew Mead
+React Course - Udemy - Andrew Mead  
+Part I - React Basics
 ============================================
 <!-- TOC -->
 
@@ -70,7 +71,7 @@ React Course - Udemy - Andrew Mead
 - [Styling our App](#styling-our-app)
   - [Setup webpack to include CSS files](#setup-webpack-to-include-css-files)
   - [Webpack and SCSS](#webpack-and-scss)
-  - [Styling ```<Header />``` component](#styling-header--component)
+  - [Styling Header component](#styling-header-component)
   - [CSS reset](#css-reset)
 - [Mobile considerations](#mobile-considerations)
 - [favicon](#favicon)
@@ -2191,7 +2192,7 @@ https://reactjs.org/docs/react-component.html
   </head>
   ```
 
-## Styling ```<Header />``` component
+## Styling Header component
 - Inside src/styles two folders base and components
 - In base add the file ```_base.scss``` the _ in the name means partial
 - In components add the file ```_header.scss```
