@@ -1,8 +1,7 @@
 > markdown: https://guides.github.com/features/mastering-markdown/  
 > Preview: Chrome extension and QuickLook / space key on the file 
 
-React Course - Udemy - Andrew Mead  
-Part I - React Basics
+React Course - Udemy - Andrew Mead - Part I
 ============================================
 <!-- TOC -->
 
