@@ -837,7 +837,7 @@ user4.printPlacesLived();
 - Props are read-only
 - Setting props is similar to setting key-value pairs in HTML attributes
 - This is a way to make the Component more flexible and pass data as we need
-- props names can be anything eg ```<Header title="Test Title"```
+- props names can be anything eg ```<Header title="Test Title">```
 - We use ```this.props``` to get access to data passed down to the Component
   ```javascript
   class IndecisionApp extends React.Component {
