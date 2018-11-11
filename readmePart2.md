@@ -16,6 +16,14 @@ React Course - Udemy - Andrew Mead - Part II
   - [Navigation panel](#navigation-panel)
   - [Organizing our Routes](#organizing-our-routes)
   - [Query Strings and URL Parameters](#query-strings-and-url-parameters)
+- [Redux](#redux)
+  - [The issues managing state](#the-issues-managing-state)
+  - [How Redux works](#how-redux-works)
+  - [Setting up Redux](#setting-up-redux)
+  - [Dispatching Actions](#dispatching-actions)
+  - [Subscribing and dynamic actions](#subscribing-and-dynamic-actions)
+    - [Watch for changes to the store](#watch-for-changes-to-the-store)
+    - [How to dispatch an action and pass some data along](#how-to-dispatch-an-action-and-pass-some-data-along)
 
 <!-- /TOC -->
 
@@ -228,3 +236,192 @@ React Course - Udemy - Andrew Mead - Part II
     <Route path="/edit/:id" component={EditExpensePage} />
     ```
   - Now the value in the url (107) comes in the variable **id** under props.match.params
+
+# Redux
+- Redux is a state management library that integrates nicely with React
+- Allow us to track changing data
+- Component's state and redux they both aim to solve the same problem which is to manage the state for your application - tracking changing data
+- State is data that changes. For components' state we used ```this.setState``` to change data and ```this.state.value``` to read some value from there
+
+## The issues managing state
+- When having complex Apps there's no way to share state across all components
+- For Simple Apps we can keep the state in a Parent component but for Complex Apps where to keep the state and how to share it? we don't have a Parent, instead a Router decide which component to show on screen - Complex State is Complex
+![Complex state](./img/complex-state.png)
+- Components in Apps like IndecisionApp are closely bound, we break things in Components which is good but the child component need props passed down from the parent so the component can't really be reused wherever we want. We will need then pass down some props to components that don't even need to know about them - Components really aren't reusable
+- What we need is a way for components to be able to interact with the application state both getting and setting value without having to manually pass props down to the entire component tree. It would be much nicer if each component could describe what it needs from the state and what it needs to be able to change on this state
+![Reusable](./img/reusable.png)
+- Some questions emerge
+  - Where do I store my app state in a complex React app?
+  - How do I create components that are actually reusable?
+- The response is: use Redux
+- There's no wrong using ```props``` it's a perfectly valid way of communicating data between parent and child eg. Options to Option in IndecisionApp or Expenses to Expense in Expensify
+- The scenario where we really want to avoid ```props``` is when we're passing props down this long chain of components just to get it to the last one in the chain. The components in between aren't actually using the value, they're just passing it along. In that case we want to avoid using props and we should use something like **Redux** instead
+
+## How Redux works
+- Redux is a state container same as our class based components
+- There's an object called **Redux Store** we can read and change
+- Individual components are gonna be able to determine how they want to read and change the elements on the store
+![Redux](./img/redux.png)
+
+## Setting up Redux
+- https://redux.js.org
+- Change Webpack to read a different file
+  ```javascript
+  entry: './src/playground/redux-101.js',
+  ```
+- Install Redux ```yarn add redux```
+- Restart dev server ```yarn run dev-server```
+- Create redux state container
+  ```javascript
+  import { createStore } from 'redux'
+
+  //first parameter is the current state
+  //we don't have a constructor function where we can set up the default so we do it inline
+  //if there is not current state what's the default object?
+  const store = createStore((state = { count: 0 }) => { //current state
+    return state
+  })
+
+  console.log(store.getState()) //output: {count: 0}
+  ```
+- We have to pass a function to ```createStore()``` and that function gets called once right away. There's no state the first time redux calls this function so the default state value is used. We then return that and it becomes the new state
+- We can fetch the current state using the ```getState()``` method on the store; this get the actual object and we can use the values inside for our purposes eg. render a component etc
+- Now, how to increment the count? or how to reset the count to zero? - Actions is the response
+
+## Dispatching Actions
+- Actions allow us to change the redux store
+- An action is nothing more than an object that gets sent to the store
+- This object describes the **type of action** we'd like to take. So we'll have actions like increment, decrement and reset. This is going to allow us to change the store over time by just dispatching various actions
+- The object will contain a property ```type``` and the value by convention is all uppercase and underscore if more than one word
+- Then we send the object to the store using ```store.dispatch({ my_action_object })```
+- When we call ```store.dispatch``` the function ```createStore``` runs for the second time. The action object gets passed as the second argument to the function 
+- Then we can use the action type to take action like adding one to the count otherwise it's the first time Redux is running the function and just return the state without change
+- Inside the action type checking we return an object with the new state, we shouldn't change the state or action but instead return the new state we use the state values to compute the new state - similar to this.setState
+  ```javascript
+  import { createStore } from 'redux'
+
+  const store = createStore((state = { count: 0 }, action) => { //current state
+    if (action.type === 'INCREMENT') {
+      return {
+        count: state.count + 1 //return new state object
+      }
+    } else {
+      return state //return state unchanged
+    }
+  })
+
+  console.log(store.getState()) //output: {count: 0}
+
+  // I'd like to increment the count
+  store.dispatch({ //dispatch an action of type INCREMENT to change the store
+    type: 'INCREMENT' //uppercase by convention
+  })
+
+  console.log(store.getState()) //now state has changed and output is {count: 1}
+  ```
+- It's a common pattern to use a ```switch``` statement instead of if/else because it's easier to read and scale
+  ```javascript
+  const store = createStore((state = { count: 0 }, action) => {
+    switch (action.type) {
+      case 'INCREMENT':
+        return {
+          count: state.count + 1 //return new state object
+        }
+      case 'DECREMENT':
+        return {
+          count: state.count - 1
+        }
+      case 'RESET':
+        return {
+          count: 0
+        }
+      default: //runs if none of the other cases run
+        return state; //return state unchanged
+    }
+  })
+
+  // dispatch actions
+  store.dispatch({
+    type: 'INCREMENT'
+  })
+  store.dispatch({
+    type: "DECREMENT"
+  })
+  store.dispatch({
+    type: 'RESET'
+  })
+  ``` 
+
+## Subscribing and dynamic actions
+
+### Watch for changes to the store
+- We need to be aware of changes to the store in order to re-render our application or do something of interest to our application
+- Redux gives us ```store.subscribe``` and we pass a function that's gonna be called every single time the store changes 
+  ```javascript
+  store.subscribe(() => {
+    console.log(store.getState()) //gets called every time an action is dispatched twice in this case
+  })
+  store.dispatch({
+    type: 'INCREMENT' 
+  })
+  store.dispatch({
+    type: "INCREMENT"
+  });
+  ```
+- We can also remove the subscription by storing the return from subscribe and calling it whenever we want to unsubscribe
+  ```javascript
+  const unsubscribe = store.subscribe(() => {
+    console.log(store.getState()) //gets called only once because we unsubscribe after the first dispatch
+  })
+  store.dispatch({
+    type: 'INCREMENT' 
+  })
+  unsubscribe()
+  store.dispatch({
+    type: "INCREMENT"
+  });
+  ```
+
+### How to dispatch an action and pass some data along 
+- We might want to pass some dynamic information to the action for instance user input
+- `type` is mandatory in all actions otherwise Redux is going to crash but we can also toss as many additional things as you want
+- For instance we might want to pass an **optional** property ```incrementBy``` and consider it in the Action handler. We will have access to this property through action.incrementBy in a similar way as we get access to action.type
+  ```javascript
+  const store = createStore((state = { count: 0 }, action) => {
+    switch (action.type) {
+      case 'INCREMENT':
+        //if there's a value take it otherwise default it to 1
+        const incrementBy = typeof action.incrementBy === 'number' ? action.incrementBy : 1
+        return {
+          count: state.count + incrementBy 
+        }
+      default: //runs if none of the other cases run
+        return state; //return state unchanged
+    }
+  })
+
+  store.dispatch({
+    type: 'INCREMENT',
+    incrementBy: 5 
+  })
+  store.dispatch({
+    type: "INCREMENT"
+  });
+  ```
+- We can also make the additional data **mandatory** by just forcing it to be passed to get the desired data. If not passed we won't have an error but it will be undefined leading to wrong behavior
+  ```javascript
+  const store = createStore((state = { count: 0 }, action) => {
+    switch (action.type) {
+      case 'SET':
+        return {
+          count: action.count
+        }
+      default: //runs if none of the other cases run
+        return state; //return state unchanged
+    }
+  })
+  store.dispatch({
+    type: 'SET',
+    count: 101
+  })
+  ```
