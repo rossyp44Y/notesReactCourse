@@ -24,6 +24,19 @@ React Course - Udemy - Andrew Mead - Part II
   - [Subscribing and dynamic actions](#subscribing-and-dynamic-actions)
     - [Watch for changes to the store](#watch-for-changes-to-the-store)
     - [How to dispatch an action and pass some data along](#how-to-dispatch-an-action-and-pass-some-data-along)
+  - [Action generators](#action-generators)
+  - [Reducers](#reducers)
+  - [Working with multiple Reducers](#working-with-multiple-reducers)
+  - [Setting filters](#setting-filters)
+  - [Sorting](#sorting)
+- [ES6 features & Others](#es6-features--others)
+  - [uuid](#uuid)
+  - [time](#time)
+  - [Object Destructuring](#object-destructuring)
+  - [Array Destructuring](#array-destructuring)
+  - [Function parameters destructuring](#function-parameters-destructuring)
+  - [Array Spread Operator](#array-spread-operator)
+  - [Object Spread Operator](#object-spread-operator)
 
 <!-- /TOC -->
 
@@ -425,3 +438,480 @@ React Course - Udemy - Andrew Mead - Part II
     count: 101
   })
   ```
+
+## Action generators
+- Functions that return Action Objects
+- All action will be created in one place and we will have a function we can call to generate the action objects
+- This way our code is less error prone especially because action types are just capitalized strings and easy to make a typo. Having a method we can call help us to have better code
+- We we're going to be preferring action generators over inline action objects
+  ```javascript
+  //inline action objects
+  store.dispatch({
+    type: "INCREMENT"
+  });
+  ```
+  ```javascript
+  //action generators
+  //long way
+  const incrementCount = () => {
+    return {
+      type: 'INCREMENT'
+    }
+  }
+  //or shorthand implicitly return object - need () wrapping the object
+  const incrementCount = () => ({
+    type: 'INCREMENT'
+  })
+
+  //call
+  store.dispatch(incrementCount());
+  ```
+- We can also pass data to action generators and this data is commonly referred as payload
+  ```javascript
+  //action generator
+  const incrementCount = (payload = {}) => ({ //default to empty object to avoid trying to get a property out of undefined
+    type: 'INCREMENT',
+    incrementBy: typeof payload.incrementBy === 'number' ? payload.incrementBy : 1
+  })
+  const store = createStore((state = { count: 0 }, action) => {
+  switch (action.type) {
+    case 'INCREMENT':
+      return {
+        count: state.count + action.incrementBy 
+      }
+  ...
+  }
+  store.dispatch(incrementCount({ incrementBy: 5 }));
+  ```
+- Now, we can take it a step further and simplify the action generator by using destructuring 
+  ```javascript
+  //instead of using the payload object coming in, we can destructure it and take incrementBy value
+  const incrementCount = ( { incrementBy } = {}) => ({ 
+    type: 'INCREMENT',
+    incrementBy: typeof incrementBy === 'number' ? incrementBy : 1
+  })
+  //then when we destructure we know we can set up default values. so if incrementBy exists use it otherwise use 1, now we don't need the ternary operator
+  const incrementCount = ( { incrementBy = 1 } = {}) => ({ 
+    type: 'INCREMENT',
+    incrementBy: incrementBy
+  })
+  //we also know that when we're setting an object property equal to a variable name with the same name we can simplify it
+  const incrementCount = ( { incrementBy = 1 } = {}) => ({ 
+    type: 'INCREMENT',
+    incrementBy
+  })
+  ```
+
+## Reducers
+- Actions describe the fact that something happened, but don't specify how the application's state changes in response. This is the job of reducers
+- Reducers are pure functions
+  - output is only determined by the input. ```state``` and ```action``` in this case. it doesn't use anything else from outside of the function scope and it doesn't change anything outside
+  - Reducers need to compute the new state only based on the old/current state and the action
+- Never change ```state``` or ```action```. instead we read those two values and return a new state object. mutating the state might bring undesired effects
+  ```javascript
+  //Reducers
+  const countReducer = (state = { count: 0 }, action) => {
+    switch (action.type) {
+      case "INCREMENT":
+        return {
+          count: state.count + action.incrementBy
+        };
+      case "DECREMENT":
+        return {
+          count: state.count - action.decrementBy
+        };
+      case "RESET":
+        return {
+          count: 0
+        };
+      case "SET":
+        return {
+          count: action.count
+        };
+      default:
+        //runs if none of the other cases run
+        return state; //return state unchanged
+    }
+  };
+
+  const store = createStore(countReducer)
+  ```
+
+## Working with multiple Reducers
+- When handling several pieces of state we'll have many actions and a single reducer is just not feasible 
+- We can split the reducers for each root property in our redux store
+- For example, actions related to handling the expenses in one reducer and actions related to filters in another reducer. Then we have to combine them together to create the complete store
+- We use combineReducers from 'redux' to bring them together
+  ```javascript 
+  /* Actions
+  // ADD_EXPENSE
+  // REMOVE_EXPENSE
+  // EDIT_EXPENSE
+  // SET_TEXT_FILTER
+  // SORT_BY_DATE
+  // SORT_BY_AMOUNT
+  // SET_START_DATE
+  // SET_END_DATE */
+  
+  // Expenses Reducer
+  const expensesReducerDefaultState = []
+  const expensesReducer = (state = expensesReducerDefaultState, action) => {
+    switch (action.type) {
+      default:
+        return state  
+    }
+  }
+
+  // Filters Reducer
+  const filtersReducerDefaultState = {
+    text: '',
+    sortBy: 'date',
+    startDate: undefined,
+    endDate: undefined
+  }
+  const filtersReducer = (state = filtersReducerDefaultState, action) => {
+    switch (action.type) {
+      default: 
+        return state
+    }
+  }
+
+  // Store creation
+  const store = createStore(
+    combineReducers({
+      expenses: expensesReducer,
+      filters: filtersReducer
+    })
+  )
+  console.log(store.getState())
+  ```
+- When we dispatch an action it will be dispatched to both reducers. We set switch/case in the reducer that actually needs to handle that specific action. We also need to set up the action generator
+  ```javascript
+  // ADD_EXPENSE - Action generator
+  const addExpense = (
+    {description = '', note = '', amount = 0,  createdAt = 0} = {} // default values
+  ) => ({ //implicitly object return
+    type: 'ADD_EXPENSE',
+    expense: {
+      id: uuid(),
+      description,
+      note,
+      amount,
+      createdAt
+    }
+  })
+
+  // Expenses Reducer - add case to handle ADD_EXPENSE
+  const expensesReducerDefaultState = []
+  const expensesReducer = (state = expensesReducerDefaultState, action) => {
+    switch (action.type) {
+      case 'ADD_EXPENSE': 
+        return state.concat(action.expense) //we shouldn't change state so we use concat instead of push. concat returns a new array 
+      default:
+        return state  
+    }
+  }
+
+  // Filters Reducer
+  const filtersReducerDefaultState = {
+    text: '',
+    sortBy: 'date',
+    startDate: undefined,
+    endDate: undefined
+  }
+  const filtersReducer = (state = filtersReducerDefaultState, action) => {
+    switch (action.type) {
+      default: 
+        return state
+    }
+  }
+
+  // Store creation
+  const store = createStore(
+    combineReducers({
+      expenses: expensesReducer,
+      filters: filtersReducer
+    })
+  )
+
+  store.subscribe(() => {
+    console.log(store.getState()); //listen to changes in the state
+  })
+
+  store.dispatch(addExpense({ description: 'Rent', amount: 100 })) //action gets dispatched to both reducers - amount expressed in pennies $1 = 100pennies
+  ```
+- As an alternative to ```concat``` we can use the spread operator which basically takes whatever it contained before and adds more data as instructed
+  ```javascript
+  //the two return statements are equivalent
+  switch (action.type) {
+  case 'ADD_EXPENSE': 
+    return state.concat(action.expense) 
+  }
+  switch (action.type) {
+  case 'ADD_EXPENSE': 
+    return [
+      ...state, //spread whatever was in variable state
+      action.expense  //and add this element
+    ]
+  }
+  ```
+- We can also use spread operator to manage complex objects inside our app
+  ```javascript
+  // EDIT_EXPENSE - Action generator
+  const editExpense = (id, updates) => ({ //takes the id and an object with things to update
+    type: 'EDIT_EXPENSE',
+    id,
+    updates
+  })
+  // Reducer
+  case 'EDIT_EXPENSE':
+    return state.map((expense) => { //map iterates through every item of the array and returns a new array
+      if (expense.id === action.id) { //id id is the one we want to edit
+        return {
+          ...expense, //takes the object
+          ...action.updates //adds the things to update
+        }   
+      } else { // this is actually optional
+        return state
+      }
+    })
+  // Store creation  
+  // Action
+  const expenseTwo = store.dispatch(addExpense({ description: "Coffee", amount: 300 }));
+  store.dispatch(editExpense(expenseTwo.expense.id, { amount: 500 }));
+  ```
+- The spread operator for filters
+  ```javascript
+  // SET_TEXT_FILTER
+  const setTextFilter = (text = '') => ({
+    type: 'SET_TEXT_FILTER',
+    text
+  })
+  // Filters Reducer
+  const filtersReducerDefaultState = {
+    text: '',
+    sortBy: 'date',
+    startDate: undefined,
+    endDate: undefined
+  }
+  const filtersReducer = (state = filtersReducerDefaultState, action) => {
+    switch (action.type) {
+      case 'SET_TEXT_FILTER':
+        return {            //new object
+          ...state,         //take the state values - clone
+          text: action.text //override the property text
+        }
+      default: 
+        return state
+    }
+  }
+  // Store creation  
+  // Action
+  store.dispatch(setTextFilter('rent'))
+  store.dispatch(setTextFilter())
+  ```
+
+## Setting filters
+  ```javascript
+  // Get visible expenses
+  const getVisibleExpenses = (expenses, { text, sortBy, startDate, endDate }) => {
+    return expenses.filter((expense) => {
+      const startDateMatch = typeof startDate !== 'number' || expense.createdAt >= startDate
+      const endDateMatch = typeof endDate !== 'number' || expense.createdAt <= endDate
+      const textMatch = expense.description.toLowerCase().includes(text.toLowerCase())
+
+      return startDateMatch && endDateMatch && textMatch
+    }) 
+  }
+  store.subscribe(() => {
+    const state = store.getState()
+    const visibleExpenses = getVisibleExpenses(state.expenses, state.filters)
+    console.log(visibleExpenses);
+  })
+  //actions
+  const expenseOne = store.dispatch(addExpense({ description: 'Rent', amount: 100, createdAt: 1000 }))
+  const expenseTwo = store.dispatch(addExpense({ description: 'Coffee', amount: 300, createdAt: -1000 }));
+  //filters
+  store.dispatch(setTextFilter('rEnT'))
+  store.dispatch(setStartDate(-2000))
+  store.dispatch(setEndDate(2000));
+  ```
+
+## Sorting
+  ```javascript
+  // Get visible expenses
+  const getVisibleExpenses = (expenses, { text, sortBy, startDate, endDate }) => {
+    return expenses.filter((expense) => {
+      const startDateMatch = typeof startDate !== 'number' || expense.createdAt >= startDate
+      const endDateMatch = typeof endDate !== 'number' || expense.createdAt <= endDate
+      const textMatch = expense.description.toLowerCase().includes(text.toLowerCase())
+
+      return startDateMatch && endDateMatch && textMatch
+    }).sort((a, b) => {
+      if (sortBy === 'date') {
+        return a.createdAt < b.createdAt ? 1 : -1
+      } else if (sortBy === 'amount') {
+        return a.amount < b.amount ? 1 : -1
+      }
+    }) 
+  }
+  ```
+
+
+# ES6 features & Others
+
+## uuid
+```javascript
+yarn add uuid //install
+import uuid from 'uuid' //import
+const expense = { //use
+  id: uuid(),
+  description: ''
+}
+```
+
+## time
+- timestamps (milliseconds)
+- January 1st 1970 (unix epoch)
+- 33400, 10, -203
+- timezone independent time data
+
+## Object Destructuring
+- Allow us to pull out properties off of an object instead of having to pass the entire object. Leads to easier to read and maintain code 
+  ```javascript
+  const person = {
+    name: 'Rocio',
+    age: 38,
+    location: {
+      city: 'Melbourne',
+      temp: 29
+    }
+  }
+
+  //basic destructing
+  const { name, age } = person
+  console.log(`${name} is ${age}.`)
+  //This is equivalent to
+  console.log(`${person.name} is ${person.age}.`);
+
+  //rename
+  const { city, temp: temperature } = person.location
+  if (city && temperature) {
+    console.log(`It's ${temperature} in ${city}`);
+  }
+
+  //rename and default value (if there isn't one)
+  const { name: firstName = 'Anonymous' } = person;
+  console.log(`Hi ${firstName}.`);
+  ```
+- Nested objects
+  ```javascript
+  //first way
+  const book = {
+    title: 'Ego is the Enemy',
+    author: 'Ryan Holiday',
+    publisher: {
+      name: 'Penguin'
+    }
+  }
+
+  const { name: publisherName = 'Self-Published' } = book.publisher
+  console.log(publisherName)
+
+  //second way - combined
+  const book2 = {
+    title: "Ego is the Enemy",
+    author: "Ryan Holiday",
+    publisher: {
+      name: "Penguin"
+    }
+  };
+
+  const { title, publisher: { name: publisherName2 = "Self-Published" } } = book2;
+  console.log(`${title} by ${publisherName2}`);
+  ```
+
+## Array Destructuring
+- We can also pull oit values off an array
+  ```javascript
+  const address = ['123 Main St', 'Chicago', 'Illinois', '60601']
+  const [ , city, state ] = address //matches by position/index
+                                    //skip the 1st take 2nd and 3rd and stop
+
+  console.log(`You are in ${city} ${state}.`);
+  // equivalent to
+  console.log(`You are in ${address[1]} ${address[2]}.`)
+
+  //no renaming
+  //default values
+  const address2 = [];
+  const [, , state2 = 'New York'] = address2; //matches by position/index
+  //skip the 1st take 2nd and 3rd and stop
+
+  console.log(`You are in ${state2}.`);
+  ```
+
+## Function parameters destructuring
+  ```javascript
+  const todo = {
+    id: "123",
+    text: "Pay the bills",
+    completed: false
+  };
+  const printTodo = ({ text, completed }) => {
+    console.log(`${text}: ${completed}`);
+  };
+  printTodo(todo);
+  ```
+  ```javascript
+  const add = ({ a, b }, c) => {
+    return a + b + c
+  }
+  console.log(add({ a: 1, b: 12 }, 100))
+  ```
+
+## Array Spread Operator
+- We can spread the content of an array and add more values
+  ```javascript
+  let cities = ['Barcelona', 'Cape Town', 'Bordeaux'] 
+  let citiesClone = [...cities, 'Santiago'] 
+  console.log(cities) // Will print three cities 
+  console.log(citiesClone) // Will print four cities
+  ```
+
+## Object Spread Operator
+- We need to add a plugin to our babel configuration
+```javascript
+yarn add babel-plugin-transform-object-rest-spread
+```
+- Add to .babelrc file in the plugins array
+  ```javascript
+  "plugins": [
+    "transform-class-properties",
+    "transform-object-rest-spread"
+  ]
+  ```
+- Use the Spread Operator with objects. It's very useful because we don't want to modify state instead we want to clone it and add/override some properties
+```javascript
+const user = {
+  name: 'Jen',
+  age: 24
+}
+//cloning an object - output: {name: "Jen", age: 24}
+console.log({
+  ...user
+})
+//define new properties - output: {name: "Jen", age: 24, location: "Melbourne"}
+console.log({
+  ...user,
+  location: 'Melbourne'
+})
+//override existing properties - output: {name: "Jen", age: 38, location: "Melbourne"}
+//the position of the overriding is important
+console.log({
+  ...user,
+  location: 'Melbourne',
+  age: 38
+});
+```
+
