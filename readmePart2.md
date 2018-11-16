@@ -37,6 +37,12 @@ React Course - Udemy - Andrew Mead - Part II
   - [Function parameters destructuring](#function-parameters-destructuring)
   - [Array Spread Operator](#array-spread-operator)
   - [Object Spread Operator](#object-spread-operator)
+- [Reorganizing the App](#reorganizing-the-app)
+- [The Higher Order Components](#the-higher-order-components)
+- [React-Redux](#react-redux)
+  - [Install and hook up store](#install-and-hook-up-store)
+  - [Reading from the Store](#reading-from-the-store)
+  - [Writing to the Store](#writing-to-the-store)
 
 <!-- /TOC -->
 
@@ -915,3 +921,313 @@ console.log({
 });
 ```
 
+# Reorganizing the App
+- Move actions to src/actions/expenses.js and src/actions/filters.js, set exports
+- Move reducers to src/reducers/expenses.js and src/reducers/filters.js, set exports
+- Move function ```getVisibleExpenses``` to src/selectors/expenses.js, set exports
+- Move Redux Store creation as a function to src/store/configureStore.js, set exports
+- Now in src/app.js we can use all of them
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+  import AppRouter from './routers/AppRouter'
+  import configureStore from './store/configureStore'
+  import { addExpense } from "./actions/expenses";
+  import { setTextFilter } from "./actions/filters";
+  import getVisibleExpenses from "./selectors/expenses";
+
+  import 'normalize.css/normalize.css'
+  import './styles/styles.scss'
+
+  const store = configureStore()
+
+  store.dispatch(addExpense({ description: 'Water bill', amount: 8700 }))
+  store.dispatch(addExpense({ description: 'Gas bill', amount: 5000 }))
+  store.dispatch(setTextFilter('bill'))
+
+  const state = store.getState()
+  const visibleExpenses = getVisibleExpenses(state.expenses, state.filters);
+  console.log(visibleExpenses);
+
+  ReactDOM.render(<AppRouter />, document.getElementById('app'))
+  ```
+
+# The Higher Order Components
+- It's a pattern heavily used in libraries such as react-redux which allow us to connect our redux stores to our react components 
+- It's just a component (the HOC) that renders another component (Regular Components)
+- We might have several of the regular components and want to use the same higher component for all of them allowing us to reuse code (eg. disclaimer at the end of each medical card)
+- The advantages of using HOC are
+  - Reuse code
+  - Render hijacking 
+  - Prop manipulation
+  - Abstract state
+- HOC Example - show a disclaimer for Private Info
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const Info = (props) => ( //Regular Component
+    <div>
+      <h1>Info</h1>
+      <p>The info is: {props.info}</p>
+    </div>
+  )
+
+  //regular function
+  //gets called with the component we want to wrap
+  //generic parameter name because it's going to be reused - uppercase because it's a component
+  const withAdminWarning = (WrappedComponent) => { 
+    //this is the HOC
+    return (props) => (
+      <div>
+        {props.isAdmin && <p>This is private info. Please don't share!</p>}
+        <WrappedComponent {...props} /> {/* pass props to the child component */}
+      </div>
+    ) 
+  }
+  //what we get back from withAdminWarning is an alternative version of <Info /> - the HOC
+  const AdminInfo = withAdminWarning(Info)
+  ReactDOM.render(<AdminInfo isAdmin={true} info="These are the details" />, document.getElementById('app'))
+  ```
+- HOC Challenge
+  ```javascript
+  import React from 'react'
+  import ReactDOM from 'react-dom'
+
+  const Info = (props) => (
+    <div>
+      <h1>Info</h1>
+      <p>The info is: {props.info}</p>
+    </div>
+  )
+
+  // requireAuthentication
+  const requireAuthentication = (WrappedComponent) => {
+    return (props) => (
+      <div>
+        {props.isAuthenticated 
+          ? <WrappedComponent {...props} />
+          : <p>Please login to view the info.</p>
+        }
+      </div>
+    )
+  }
+  const AuthInfo = requireAuthentication(Info);
+  ReactDOM.render(<AuthInfo isAuthenticated={false} info="These are the details" />, document.getElementById('app'))
+  ```
+
+# React-Redux
+
+## Install and hook up store
+- Install ```yarn add react-redux```
+- To integrate Redux in our application we're going to be using the ```<Provider />``` component once at the root of our application and we're going to be using ```connect()``` for every single component that needs to connect to the redux store
+- ```<Provider>``` allow us to provide the store to all of the components that make up our application so we don't need to manually pass the store around instead individual components that want to access the store can just access it
+  ```javascript
+  import { Provider } from 'react-redux'
+  //.....more imports
+  const store = configureStore()
+
+  store.dispatch(addExpense({ description: 'Water bill', amount: 8700 }))
+  store.dispatch(addExpense({ description: 'Gas bill', amount: 5000 }))
+  store.dispatch(setTextFilter('bill'))
+
+  const state = store.getState()
+  const visibleExpenses = getVisibleExpenses(state.expenses, state.filters);
+  console.log(visibleExpenses);
+
+  const jsx = (
+    <Provider store={store}>
+      <AppRouter />
+    </Provider>
+  );
+  ReactDOM.render(jsx, document.getElementById('app'))
+  ```
+- We're going to use ```connect``` in all of our individual components that need to either **dispatch actions** or **read from the store** 
+
+## Reading from the Store
+- What we get back from the API is a function, so we need to call it with the regular component
+```const ConnectedExpenseList = connect()(ExpenseList)```
+  ```javascript
+  import React from 'react'
+  import { connect } from 'react-redux'
+
+  const ExpenseList = (props) => (
+    <div>
+      <h1>Expense List</h1>
+      {props.name}<br />             {/* //output: Rocio */}
+      {props.expenses.length} <br /> {/* //output: 2 */}
+      {props.filters.text}           {/* //output: bill */}
+    </div>
+  )
+
+  //new const for HOC 
+  //what we get back from the API is a function, so we need to call it with the regular component
+  const ConnectedExpenseList = connect((state) => {
+    //function as parameter, store state get passed in as 1st argument
+    //what information from the state we want to access? usually a subset of the state
+    //we just need to return an object - any key-value pairs we want, usually from the state but any pair is possible
+    return {
+      name: 'Rocio', //not too useful
+      expenses: state.expenses,
+      filters: state.filters
+    }
+
+  })(ExpenseList)
+
+  //export the connectedList instead the list
+  export default ConnectedExpenseList
+  ```
+- It's not a common pattern to create a separate variable and then export it by default. It's more common to just export the unnamed call
+  ```javascript
+  export default connect(state => {
+    return {
+      name: "Rocio",
+      expenses: state.expenses,
+      filters: state.filters
+    };
+  })(ExpenseList)
+  ```
+- It's also a very common practice to take the function inside ```connect``` and break it out into its own variable usually named ```mapStateToProps```
+  ```javascript
+  const mapStateToProps = (state) => {
+    return {
+      name: "Rocio",
+      expenses: state.expenses,
+      filters: state.filters
+    }
+  }
+  export default connect(mapStateToProps)(ExpenseList)
+  ```
+- Further simplification by implicitly returning the object
+  ```javascript
+  const mapStateToProps = (state) => ({
+    name: "Rocio",
+    expenses: state.expenses,
+    filters: state.filters
+  })
+  ```
+- As the store changes ```mapStateToProps``` automatically going to rerun getting the fresh values in the component
+  ```javascript
+  store.dispatch(setTextFilter('bill'))
+
+  setTimeout(() => {
+    store.dispatch(setTextFilter("rent"));
+  }, 3000)
+  ```
+- When you connect a component to the redux store it's reactive which means that as the store changes your component is going to get re-rendered with those new values
+- The connected component doesn't need to worry about using ```store.subscribe``` or ```store.getState``` it doesn't have to use any component state to manage that data, instead all of that is done for us by react-redux. All we have to do is define how we want to render things. This is called **Presentational Component Pattern**
+- Expenses rendering
+  ```javascript
+  //ExpenseList.js
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import ExpenseListItem from './ExpenseListItem'
+  import selectExpenses from '../selectors/expenses'
+
+  const ExpenseList = (props) => (
+    <div>
+      <h1>Expense List</h1>
+      {
+        props.expenses.map((expense) => 
+        <ExpenseListItem 
+          key={expense.id}
+          {...expense}
+        />)
+      }
+    </div>
+  )
+
+  const mapStateToProps = state => ({
+    expenses: selectExpenses(state.expenses, state.filters)
+  });
+
+  export default connect(mapStateToProps)(ExpenseList)
+
+  //ExpenseListItem
+  import React from 'react';
+
+  const ExpenseListItem = ( { description, amount, createdAt}) => (
+    <div>
+      <h3>{description}</h3>
+      <p>{amount} - {createdAt}</p>
+    </div>
+  );
+
+  export default ExpenseListItem
+  ```
+
+## Writing to the Store
+- Dispatch actions to change data in the store
+- ExpenseListFilters is rendered in ExpenseDashboardPage
+  ```javascript
+  //ExpenseListFilters.js
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import { setTextFilter } from '../actions/filters'
+
+  const ExpenseListFilters = (props) => (
+    <div>
+      <input type="text" 
+        //input renders whatever is in the store
+        value={props.filters.text}
+        onChange={(event) => {
+          //dispatch an action to change filters.text value
+          props.dispatch(setTextFilter(event.target.value))
+        }}  
+      />
+    </div>
+  )
+
+  const mapStateToProps = (state) => ({
+    filters: state.filters
+  })
+  export default connect(mapStateToProps)(ExpenseListFilters)
+  ```
+- Remove Expense button - write to the store
+  ```javascript
+  import React from 'react';
+  import { connect } from 'react-redux'
+  import { removeExpense } from '../actions/expenses'
+
+  const ExpenseListItem = ( { dispatch, id, description, amount, createdAt }) => (
+    <div>
+      <h3>{description}</h3>
+      <p>{amount} - {createdAt}</p>
+      <button onClick={() => {
+        dispatch(removeExpense({id}))
+      }}>Remove</button>
+    </div>
+  );
+
+  //We don't want to gather anything from the store 
+  //but we want to dispatch an action so it has to be connected
+  export default connect()(ExpenseListItem)
+  ```
+- **Controlled input** are inputs such as ```<input>``` or ```<select>``` where the value is controlled by javascript. The alternative would be a form field. We're going to be sticking with the controlled inputs when we can. It gives us a lot more control  
+  ```javascript
+  const ExpenseListFilters = (props) => (
+    <div>
+      <input 
+        type="text" 
+        //input renders whatever is in the store
+        value={props.filters.text}
+        onChange={(event) => {
+          //dispatch an action to change filters.text value
+          props.dispatch(setTextFilter(event.target.value))
+        }}  
+      />
+      <select 
+        value={props.filters.sortBy}
+        onChange={(event) => {
+          if (event.target.value === 'date') {
+            props.dispatch(sortByDate())
+          } else if (event.target.value === 'amount') {
+            props.dispatch(sortByAmount());
+          }
+      }}>
+        <option value="date">Date</option>
+        <option value="amount">Amount</option>
+      </select>
+    </div>
+  )
+  ```
