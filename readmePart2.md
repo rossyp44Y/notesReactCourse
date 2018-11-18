@@ -939,7 +939,7 @@ console.log({
     //this is the HOC
     return (props) => (
       <div>
-        {props.isAdmin && <p>This is private info. Please don't share!</p>}
+        {props.isAdmin && <p>This is private info. Please do not share!</p>}
         <WrappedComponent {...props} /> {/* pass props to the child component */}
       </div>
     ) 
