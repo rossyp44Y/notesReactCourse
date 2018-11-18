@@ -3,48 +3,7 @@
 
 React Course - Udemy - Andrew Mead - Part II
 ============================================
-<!-- TOC -->
-
-- [React Router](#react-router)
-  - [Install](#install)
-  - [Import](#import)
-  - [Use BrowserRouter and Router](#use-browserrouter-and-router)
-  - [Webpack Configuration](#webpack-configuration)
-  - [Setting Up a 404](#setting-up-a-404)
-  - [Linking between Routes](#linking-between-routes)
-  - [Static content across pages](#static-content-across-pages)
-  - [Navigation panel](#navigation-panel)
-  - [Organizing our Routes](#organizing-our-routes)
-  - [Query Strings and URL Parameters](#query-strings-and-url-parameters)
-- [Redux](#redux)
-  - [The issues managing state](#the-issues-managing-state)
-  - [How Redux works](#how-redux-works)
-  - [Setting up Redux](#setting-up-redux)
-  - [Dispatching Actions](#dispatching-actions)
-  - [Subscribing and dynamic actions](#subscribing-and-dynamic-actions)
-    - [Watch for changes to the store](#watch-for-changes-to-the-store)
-    - [How to dispatch an action and pass some data along](#how-to-dispatch-an-action-and-pass-some-data-along)
-  - [Action generators](#action-generators)
-  - [Reducers](#reducers)
-  - [Working with multiple Reducers](#working-with-multiple-reducers)
-  - [Setting filters](#setting-filters)
-  - [Sorting](#sorting)
-- [ES6 features & Others](#es6-features--others)
-  - [uuid](#uuid)
-  - [time](#time)
-  - [Object Destructuring](#object-destructuring)
-  - [Array Destructuring](#array-destructuring)
-  - [Function parameters destructuring](#function-parameters-destructuring)
-  - [Array Spread Operator](#array-spread-operator)
-  - [Object Spread Operator](#object-spread-operator)
-- [Reorganizing the App](#reorganizing-the-app)
-- [The Higher Order Components](#the-higher-order-components)
-- [React-Redux](#react-redux)
-  - [Install and hook up store](#install-and-hook-up-store)
-  - [Reading from the Store](#reading-from-the-store)
-  - [Writing to the Store](#writing-to-the-store)
-
-<!-- /TOC -->
+[[TOC]]
 
 # React Router
 - There are differences between server routing and client routing
@@ -678,7 +637,7 @@ React Course - Udemy - Andrew Mead - Part II
           ...action.updates //adds the things to update
         }   
       } else { // this is actually optional
-        return state
+        return expense
       }
     })
   // Store creation  
@@ -1230,4 +1189,949 @@ console.log({
       </select>
     </div>
   )
+  ```
+
+## Handling the Form
+- The idea here is to keep track of the changes to the form input in local state and then when clicking submit change the store
+
+### input and textarea
+- There are two ways to manage the onChange event
+  - Create a constant first - input
+    ```javascript
+    //file ExpenseForm.js
+    import React from 'react'
+
+    export default class ExpenseForm extends React.Component {
+      state = {
+        description: '',
+      }
+      onDescriptionChange = (event) => {
+        //constant to be used in the callback
+        const description = event.target.value
+        this.setState(() => ( { description })) //returns implicit object
+      }
+      render() {
+        return (
+          <div>
+            <form>
+              <input
+                type="text"
+                placeholder="Description"
+                autoFocus
+                value={this.state.description}
+                onChange={this.onDescriptionChange}
+              />
+              <button>Add Expense</button>
+            </form>
+          </div>
+        )
+      }
+    }
+    ```
+  - Using persist to being able to use the event inside the callback - textarea
+    ```javascript
+    import React from 'react'
+
+    export default class ExpenseForm extends React.Component {
+      state = {
+        note: ''
+      }
+      onNoteChange = (event) => {
+        //if we want to use event in the callback we need to persist the event
+        event.persist()
+        this.setState(() => ( { note: event.target.value }))
+      }
+      render() {
+        return (
+          <div>
+            <form>
+              <textarea
+                placeholder="Add a note for your expense (optional)"
+                value={this.state.note}
+                onChange={this.onNoteChange}
+              >
+              </textarea>
+              <button>Add Expense</button>
+            </form>
+          </div>
+        )
+      }
+    }
+    ```
+  
+### amount field
+- The ```number``` input type restrict the input however accepts all decimals we want. It's better to switch it to text and manage the validation manually with a regular expression
+- https://regex101.com is a good site to check your regEx
+  ```javascript
+  import React from 'react'
+
+  export default class ExpenseForm extends React.Component {
+    state = {
+      amount: ''
+    }
+    onAmountChange = (event) => {
+      const amount = event.target.value
+      //regEx: 
+      //^ starts with 
+      // \d digit
+      //* zero ar as many as you want
+      //() optional
+      //\. escapes the dot
+      //{0, 2} min 0 max 2
+      //? 0 or 1
+      //$ ends with
+      //amount.match(/^\d*(\.\d{0,2})?$/))
+      //{1,} one or as many as you want
+      //!amount allows to delete the value
+      if (!amount || amount.match(/^\d{1,}(\.\d{0,2})?$/)) {
+        this.setState(() => ( { amount }))
+      }  
+    }
+    render() {
+      return (
+        <div>
+          <form>
+            <input 
+              type="text"
+              placeholder="Amount"
+              value={this.state.amount}
+              onChange={this.onAmountChange}
+            />
+            <button>Add Expense</button>
+          </form>
+        </div>
+      )
+    }
+  }
+  ```
+
+### createdAt field
+- We're going to setup a date picker 
+- We need two important libraries **moment.js** which is a time library that makes easy to manipulate and format time (https://momentjs.com)
+- We'll also use airbnb/react-dates which is a component we will use to allow the user to pick a date (https://github.com/airbnb/react-dates & http://airbnb.io/react-dates)
+  ```javascript
+  yarn add moment react-dates (I did not install react-addons-compare, it was in my version)
+  ```
+- react-dates needs a ```moment``` object to get initialized. Also when the user picks a date we get back a moment object
+  ```javascript
+  import moment from 'moment'
+
+  const now = moment()
+  console.log(now)
+  console.log(now.format('MMM Do, YYYY'))
+  ```
+- Using airbnb SingleDatePicker
+  ```javascript
+  import React from 'react'
+  //react-dates uses moment as objects to initialize and return
+  import moment from 'moment'
+  import { SingleDatePicker } from 'react-dates'
+  //this one is required in newer versions than the video
+  import 'react-dates/initialize';
+  import 'react-dates/lib/css/_datepicker.css'
+
+  export default class ExpenseForm extends React.Component {
+    state = {
+      createdAt: moment(),
+      //if we want it to be displayed when the page loads
+      calendarFocused: false
+    }
+    //gets the selected date passed in
+    onDateChange = (createdAt) => {
+      //this if avoids to delete the date
+      if (createdAt) {
+        this.setState(() => ({ createdAt }))
+      }
+    }
+    onFocusChange = ( {focused}) => {
+      this.setState(() => ({ calendarFocused: focused }))
+    }
+    render() {
+      return (
+        <div>
+          <form>
+            <SingleDatePicker 
+              //initial date
+              date={this.state.createdAt}
+              onDateChange={this.onDateChange}
+              focused={this.state.calendarFocused}
+              onFocusChange={this.onFocusChange}
+              //by default shows two months at once, here we change to 1
+              numberOfMonths={1}
+              //to allow selecting dates in the past, basically no date is outside range
+              isOutsideRange={ () => false }
+              //required in newer version
+              id="createdAt"
+            />
+            <button>Add Expense</button>
+          </form>
+        </div>
+      )
+    }
+  }
+  ```
+
+### Validate the form
+- Add error to the state
+- Add onSubmit handler
+- Prevent the form from regular submit
+  ```javascript
+  export default class ExpenseForm extends React.Component {
+    state = {
+      ...
+      error: ''
+    }
+    ....
+    onSubmit = (event) => {
+      event.preventDefault()
+      //if description or amount are empty set the error message
+      if(!this.state.description || !this.state.amount) {
+        this.setState(() => ({ error: 'Please provide description and amount.'}))
+      } else {
+        // if both values are provided clear the error
+        this.setState(() => ({ error: '' }))
+        console.log('submitted')
+      }
+    }
+    render() {
+      return (
+        <div>
+          {/* render error message if there is one */}
+          {this.state.error && <p>{this.state.error}</p>}
+          <form onSubmit={this.onSubmit}>
+            ...
+            <button>Add Expense</button>
+          </form>
+        </div>
+      )
+    }
+  }
+  ```
+- We don't want to dispatch the action to create an expense from ```ExpenseForm.js``` because we want the Form component to be reused for editing an expense. So the action we dispatch is going to be different for add and edit
+- What we're going to do is just pass the data up and then determine what to do with the data when the user submits the form dynamically. So we define a function in AddExpensePage that dispatch the action but the actual call to the function is done in the children ExpenseForm
+  ```javascript
+  //AddExpensePage.js
+  import React from 'react'
+  import ExpenseForm from './ExpenseForm'
+  import { connect } from 'react-redux' // we need connect to be able to dispatch actions
+  import { addExpense } from '../actions/expenses'
+
+  const AddExpensePage = (props) => (
+    <div>
+      <h1>Add Expense</h1>
+      <ExpenseForm 
+        //onSubmit gets passed to the Form as prop so that it can be executed from there
+        //expense is an object that gets filled in inside the children ExpenseForm
+        onSubmit={(expense) => {
+          //dispatch the action addExpense
+          props.dispatch(addExpense(expense))
+          //redirect to the dashboard page
+          //history is part of the properties because the router
+          props.history.push('/')
+        }}
+      />
+    </div>
+  );
+
+  //don't need anything from the store but we want to connect this component to dispatch addExpense action
+  export default connect()(AddExpensePage)
+  ```
+  ```javascript
+  //ExpenseForm.js
+  onSubmit = (event) => {
+    event.preventDefault()
+    if(!this.state.description || !this.state.amount) {
+      this.setState(() => ({ error: 'Please provide description and amount.'}))
+    } else {
+      this.setState(() => ({ error: '' }))
+      //onSubmit is a method defined in the parent AddExpensePage, we call it from the child  
+      this.props.onSubmit({
+        description: this.state.description,
+        amount: parseFloat(this.state.amount, 10) * 100, //we're working on cents
+        createdAt: this.state.createdAt.valueOf(), //get milliseconds out of the moment object
+        note: this.state.note
+      })
+    }
+  }
+  ```
+
+### Edit Expense
+- Reuses the ExpenseForm component to pre-populate the expense values
+- To have access to props in the initial state need to refactor and introduce the constructor in ExpenseForm
+- In EditExpense we're passing down one more prop with the expense
+  ```javascript
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import ExpenseForm from './ExpenseForm'
+  import { editExpense, removeExpense } from '../actions/expenses'
+
+  const EditExpensePage = (props) => {
+    return (
+      <div>
+        <ExpenseForm 
+          //passing the expense to the form
+          expense={props.expense}
+          onSubmit={(expense) => {
+            props.dispatch(editExpense(props.expense.id, expense))
+            props.history.push('/')
+          }}
+        />
+        <button onClick={() => {
+          props.dispatch(removeExpense({ id: props.expense.id }))
+          props.history.push('/')
+        }}>Remove</button>
+      </div>
+    );
+  }
+
+  const mapStateToProps = (state, props) => {
+    return {
+      expense: state.expenses.find((expense) => expense.id === props.match.params.id)
+    }
+  }
+
+  export default connect(mapStateToProps)(EditExpensePage)
+  ```
+- In the form if expense is coming we pre-populate the fields otherwise use the default initial values
+  ```javascript
+  import React from 'react'
+  import moment from 'moment'
+  import { SingleDatePicker } from 'react-dates'
+  import 'react-dates/lib/css/_datepicker.css'
+
+  export default class ExpenseForm extends React.Component {
+    //change to have a constructor so that we can access props
+    //if expense is coming as a prop means EditPage is calling this component not AddPage
+    //set state with current values for edit or default initial values for add
+    constructor(props) {
+      super(props)
+      this.state = {
+        description: props.expense ? props.expense.description : '',
+        note: props.expense ? props.expense.note : '',
+        amount: props.expense ? (props.expense.amount / 100).toString() : '',
+        createdAt: props.expense ? moment(props.expense.createdAt) : moment(),
+        calendarFocused: false,
+        error: ''
+      }
+    }
+    
+    onDescriptionChange = (event) => {
+      const description = event.target.value
+      this.setState(() => ( { description })) //returns implicit object
+    }
+    onNoteChange = (event) => {
+      //if we want to use event in the callback we need to persist the event
+      event.persist()
+      this.setState(() => ( { note: event.target.value }))
+    }
+    onAmountChange = (event) => {
+      const amount = event.target.value
+      if (!amount || amount.match(/^\d{1,}(\.\d{0,2})?$/)) {
+        this.setState(() => ( { amount }))
+      }   
+    }
+    onDateChange = (createdAt) => {
+      //this if avoids to delete the date
+      if (createdAt) {
+        this.setState(() => ({ createdAt }))
+      }
+    }
+    onFocusChange = ( {focused}) => {
+      this.setState(() => ({ calendarFocused: focused }))
+    }
+    onSubmit = (event) => {
+      event.preventDefault()
+
+      if(!this.state.description || !this.state.amount) {
+        this.setState(() => ({ error: 'Please provide description and amount.'}))
+      } else {
+        this.setState(() => ({ error: '' }))
+        //onSubmit is a method defined in the parent AddExpensePage or EditExpensePage, we call it from the child  
+        this.props.onSubmit({
+          description: this.state.description,
+          amount: parseFloat(this.state.amount, 10) * 100, //we're working on cents
+          createdAt: this.state.createdAt.valueOf(),
+          note: this.state.note
+        })
+      }
+    }
+    render() {
+      return (
+        <div>
+          {this.state.error && <p>{this.state.error}</p>}
+          <form onSubmit={this.onSubmit}>
+            <input
+              type="text"
+              placeholder="Description"
+              autoFocus
+              value={this.state.description}
+              onChange={this.onDescriptionChange}
+            />
+            <input 
+              type="text"
+              placeholder="Amount"
+              value={this.state.amount}
+              onChange={this.onAmountChange}
+            />
+            <SingleDatePicker 
+              date={this.state.createdAt}
+              onDateChange={this.onDateChange}
+              focused={this.state.calendarFocused}
+              onFocusChange={this.onFocusChange}
+              numberOfMonths={1}
+              isOutsideRange={ () => false }
+              id="createdAt"
+            />
+            <textarea
+              placeholder="Add a note for your expense (optional)"
+              value={this.state.note}
+              onChange={this.onNoteChange}
+            >
+            </textarea>
+            <button>Add Expense</button>
+          </form>
+        </div>
+      )
+    }
+  }
+  ```
+
+## Redux Developer Tools
+- Install extension in chrome
+- Add configuration to the store
+- https://github.com/zalmoxisus/redux-devtools-extension
+  ```javascript
+  // Store creation
+  export default () => {
+    const store = createStore(
+      combineReducers({
+        expenses: expensesReducer,
+        filters: filtersReducer
+      }),
+      //this info is added for chrome extension Redux DevTools
+      window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+    )
+    return store
+  }
+  ```
+- Possible to check actions, state, differences, dispatch actions and watch how the store changes
+
+## Filtering by dates
+- Change the filters file
+  ```javascript
+  //src/reducers/filters.js
+  import moment from 'moment'
+
+  const filtersReducerDefaultState = {
+    text: '',
+    sortBy: 'date',
+    //by default we'll pick the 1st and last day of the current month as the range
+    startDate: moment().startOf('month'),
+    endDate: moment().endOf('month')
+  }
+
+  export default (state = filtersReducerDefaultState, action) => { .... }
+  ```
+- Change ExpenseListFilters to class component because we need to track state. When we convert we need to change ```props``` for ```this.props```
+- Include the DateRangePicker component
+  ```javascript
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import { DateRangePicker } from 'react-dates'
+  import { setTextFilter, sortByDate, sortByAmount, setStartDate, setEndDate } from '../actions/filters'
+
+  class ExpenseListFilters extends React.Component {
+    state = {
+      calendarFocused: null 
+    }
+    //this function gets called by the react-dates library
+    //it's gonna get called with an object and in that object we'll have startDate and endDate
+    //we can destructure or have a variable and pull the values off
+    onDatesChange = ({ startDate, endDate }) => {
+      this.props.dispatch(setStartDate(startDate))
+      this.props.dispatch(setEndDate(endDate))
+    }
+    onFocusChange = (calendarFocused) => {
+      this.setState(() => ({ calendarFocused }))
+    }
+    render() {
+      return (
+        <div>
+          {...}
+          <DateRangePicker
+            startDate={this.props.filters.startDate}
+            startDateId="startDate"
+            endDate={this.props.filters.endDate}
+            endDateId="endDate"
+            onDatesChange={this.onDatesChange}
+            focusedInput={this.state.calendarFocused} //toggle visualization of the calendar
+            onFocusChange={this.onFocusChange}
+            showClearDates={true} //shows and X to clear the range
+            numberOfMonths={1} //one month at a time
+            isOutsideRange={() => false} //allows to pick dates in the past
+          />
+        </div>
+      )
+    }
+  }
+  const mapStateToProps = (state) => ({
+    filters: state.filters
+  })
+  export default connect(mapStateToProps)(ExpenseListFilters)
+  ```
+- Fix the application of the filters, before we were using numbers, now we are using moment instances
+  ```javascript
+  //file: src/selectors/expenses
+  import moment from 'moment'
+  // Get visible expenses
+
+  export default (expenses, { text, sortBy, startDate, endDate }) => {
+    return expenses.filter((expense) => {
+      const createdAtMoment = moment(expense.createdAt)
+      const startDateMatch = startDate ? startDate.isSameOrBefore(createdAtMoment, 'day') : true
+      const endDateMatch = endDate ? endDate.isSameOrAfter(createdAtMoment, 'day') : true
+      const textMatch = expense.description.toLowerCase().includes(text.toLowerCase())
+
+      return startDateMatch && endDateMatch && textMatch
+    }).sort((a, b) => {
+      if (sortBy === 'date') {
+        return a.createdAt < b.createdAt ? 1 : -1
+      } else if (sortBy === 'amount') {
+        return a.amount < b.amount ? 1 : -1
+      }
+    }) 
+  }
+  ```
+
+# Yarn aliases
+- ```test``` and ```start``` in yarn have aliases or short hands because they're very popular
+- yarn run start and yarn start are the same
+- yarn run test and yarn test are the same
+ 
+# Podcasts
+https://github.com/rShetty/awesome-podcasts#functional-programming
+
+# Testing
+- Jest (from Facebook) integrates well with react and as such the best to work with in React Apps. There are other testing frameworks, each one fulfills their own purposes jasmine, moka (node), karma (angular)
+- yarn add jest
+- package.json => new script 
+  ```javascript
+  "scripts": {
+    "serve": "live-server public/",
+    "build": "webpack",
+    "dev-server": "webpack-dev-server",
+    "test": "jest"
+  },
+  ``` 
+- https://github.com/facebook/jest /  https://jestjs.io/docs/en/api   https://jestjs.io
+- extension of files is fileName.test.js - jest will watch for this extension when looking for tests to run
+- Inside the testing files we get access to a set of global variables that jest provides to us allowing us to construct test cases eg. ```test``` which receives two arguments. 1st is a string describing what the test should do and 2nd the code to run for the test case. So, usually a string and an arrow function.
+  ```javascript
+  const add = (a, b) => a + b + 1
+
+  test ('should add two numbers', () => {
+    const result = add (4, 3)
+
+    //manual assertion, tedious and error prone
+    if (result !== 7) {
+      throw new Error(`You added 4 and 3. The result was ${result}. Expected 7`)
+    }
+  })
+  ```
+- jest gives us an assertion library. ```expect``` is another global that jest provides
+  ```javascript
+  const add = (a, b) => a + b
+
+  test ('should add two numbers', () => {
+    const result = add (4, 3)
+    expect(result).toBe(7)
+  })
+  ```
+- test files are run through babel so we can use ES6 and ES7 features
+- We can run jest in watch mode, when a test changes or one of the things the file imports change, we're going to rerun the test suite
+  - change the script in package.json. Although sometimes we don't want to watch changes just run the tests.
+  ```javascript
+  "test": "jest --watch"
+  ```
+  - type a different command in the terminal
+    ```javascript
+    yarn run test -- --watch //the first -- means the next are parameter passed down to the script not to the yarn command - video version
+    ```
+  - with my version the jest the command above didn't work. Used:
+  ```javascript
+  yarn run test --watchAll
+  ```
+- Challenge
+  ```javascript
+  const generateGreeting = (name = 'Anonymous') => (`Hello ${name}!`)
+
+  test ('should generate greeting from name', () => {
+    const greeting = generateGreeting('Rocio')
+    expect(greeting).toBe('Hello Rocio!')
+  })
+
+  test ('should generate greeting for no name', () => {
+    const greeting = generateGreeting()
+    expect(greeting).toBe('Hello Anonymous!')
+  })
+  ```
+
+## Testing Action Generators
+- toBe is not suitable to compare objects because it uses === to compare. Even in the console {} === {} and [] === [] will return in false. We use toEqual instead, it goes though the array or object and asserts that all properties are the same
+- We can assert the type of a value if we don't know what the exact value is gonna be. Like in the uuid generator
+  ```javascript
+  //expenses.test.js
+  import { addExpense, removeExpense, editExpense } from '../../actions/expenses'
+
+  //amount in this file is a number representing cents
+  //createdAt in this file is a number
+  test('should setup remove expense action object', () => {
+    const action = removeExpense({ id: '123AbC'})
+    expect(action).toEqual({
+      type: 'REMOVE_EXPENSE',
+      id: '123AbC'
+    })
+  })
+
+  test('should setup edit expense action object', () => {
+    const action = editExpense('123AbC', { description: 'New description', amount: 2550})
+    expect(action).toEqual({
+      type: 'EDIT_EXPENSE',
+      id: '123AbC',
+      updates: {
+        description: 'New description',
+        amount: 2550
+      }
+    })
+  })
+
+  test('should setup add expense action object with provided values', () => {
+    const expenseData = {
+      description: 'Rent',
+      amount: 109500,
+      createdAt: 1000,
+      note: 'This was November Rent'
+    } 
+    const action = addExpense(expenseData)
+    expect(action).toEqual({
+      type: 'ADD_EXPENSE',
+      expense: {
+        ...expenseData, //spread out expenseData
+        id: expect.any(String) //id changes every time
+      }
+    })
+  })
+
+  test('should setup add expense action object with default values', () => {
+    const action = addExpense()
+    expect(action).toEqual({
+      type: 'ADD_EXPENSE',
+      expense: {
+        id: expect.any(String), //id changes every time
+        description: '',
+        note: '',
+        amount: 0,
+        createdAt: 0
+      }
+    })
+  })
+  ```
+
+## Testing Selector
+  ```javascript
+  //file src/tests/selectors/expenses.test.js
+  import selectExpenses from '../../selectors/expenses'
+  import moment from 'moment'
+
+  //createdAt in the expenses and filters objects are timestamps / numbers
+  const expenses = [{
+    id: '1',
+    description: 'Gum',
+    note: '',
+    amount: 195,
+    createdAt: 0 //unix epoch time - 1st January 1970
+  }, {
+    id: '2',
+    description: 'Rent',
+    note: '',
+    amount: 109500,
+    createdAt: moment(0).subtract(4, 'days').valueOf() //4 days in the past
+  },
+  {
+    id: '3',
+    description: 'Credit card',
+    note: '',
+    amount: 4500,
+    createdAt: moment(0).add(4, 'days').valueOf() //4 days in the future
+  }]
+
+  test('should filter by text value', () => {
+    const filters = {
+      text: 'e',
+      sortBy: 'date',
+      startDate: undefined,
+      endDate: undefined
+    }
+    const result = selectExpenses(expenses, filters)
+    expect(result.length).toBe(2)
+    //credit card comes first because by default we sort by date, newer first
+    expect(result).toEqual([ expenses[2], expenses[1] ])
+  })
+
+  test('should filter by start date', () => {
+    const filters = {
+      text: '',
+      sortBy: 'date',
+      startDate: moment(0),
+      endDate: undefined
+    }
+    const result = selectExpenses(expenses, filters)
+    expect(result.length).toBe(2)
+    //the expense in the past gets filtered out
+    expect(result).toEqual([ expenses[2], expenses[0] ])
+  })
+
+  test('should filter by end date', () => {
+    const filters = {
+      text: '',
+      sortBy: 'date',
+      startDate: undefined,
+      endDate: moment(0).add(2, 'days')
+    }
+    const result = selectExpenses(expenses, filters)
+    expect(result.length).toBe(2)
+    //the expenses 2 days after unix epoch time get filtered out
+    expect(result).toEqual([ expenses[0], expenses[1] ])
+  })
+
+  test('should sort by date', () => {
+    const filters = {
+      text: '',
+      sortBy: 'date',
+      startDate: undefined,
+      endDate: undefined
+    }
+    const result = selectExpenses(expenses, filters)
+    expect(result.length).toBe(3)
+    //newer first
+    expect(result).toEqual([ expenses[2], expenses[0], expenses[1] ])
+  })
+
+  test('should sort by amount', () => {
+    const filters = {
+      text: '',
+      sortBy: 'amount',
+      startDate: undefined,
+      endDate: undefined
+    }
+    const result = selectExpenses(expenses, filters)
+    expect(result.length).toBe(3)
+    expect(result).toEqual([ expenses[1], expenses[2], expenses[0] ])
+  })
+  ```
+## Testing reducers
+
+### Filters
+  ```javascript
+  import moment from 'moment'
+  import filtersReducer from '../../reducers/filters'
+
+  test('should setup default filter values' , () => {
+    //there's an internal action @@INIT that gets called when initializing
+    //undefined existing state and action type @@INIT
+    const state = filtersReducer(undefined, { type: '@@INIT'})
+    expect(state).toEqual({
+        text: '',
+        sortBy: 'date',
+        startDate: moment().startOf('month'),
+        endDate: moment().endOf('month')
+    })
+  })
+
+  test('should set sortBy to amount', () => {
+    //by default it's date, we're verifying the change
+    const state = filtersReducer(undefined, { type: 'SORT_BY_AMOUNT'})
+    expect(state.sortBy).toBe('amount')
+  })
+
+  test('should set sortBy to date', () => {
+    const currentState = {
+      text: '',
+      sortBy: 'amount', //make sure it starts with amount so that we can watch the change
+      startDate: undefined,
+      endDate: undefined
+    }
+    const action = {
+      type: 'SORT_BY_DATE'
+    }
+    const state = filtersReducer(currentState, action)
+    expect(state.sortBy).toBe('date')
+  })
+
+  test('should set text filter', () => {
+    //it's good idea to create a const for this as we have to use it in two places
+    const text = 'This is my filter' 
+    const state = filtersReducer(undefined, {  //second parameter is the action
+      type: 'SET_TEXT_FILTER', 
+      text
+    })
+    expect(state.text).toBe(text)
+  })
+
+  test('should set start date filter', () => {
+    //the default value startOf month was already tested so we don't need to repeat
+    //the purpose of the test is to check the filter is set
+    const startDate = moment()
+    const state = filtersReducer(undefined, { 
+      type: 'SET_START_DATE', 
+      startDate
+    })
+    expect(state.startDate).toEqual(startDate)
+  })
+
+  test('should set end date filter', () => {
+    //the default value endOf month was already tested so we don't need to repeat
+    //the purpose of the test is to check the filter is set
+    const endDate = moment()
+    const state = filtersReducer(undefined, { 
+      type: 'SET_END_DATE', 
+      endDate
+    })
+    expect(state.endDate).toEqual(endDate)
+  })
+  ```
+
+### Expenses
+  ```javascript
+  import expensesReducer from '../../reducers/expenses'
+  import expenses from '../fixtures/expenses'
+  import moment from 'moment'
+
+  test('should set default state', () => {
+    const state = expensesReducer(undefined, {type: '@@INIT'})
+    expect(state).toEqual([])
+  })
+
+  test('should remove expense by id', () => {
+    const action = {
+      type: 'REMOVE_EXPENSE',
+      id: expenses[1].id
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(2)
+    expect(state).toEqual([ expenses[0], expenses[2] ])
+  })
+
+  test('should not remove expenses if id not found', () => {
+    const action = {
+      type: 'REMOVE_EXPENSE',
+      id: '-1'
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(3)
+    expect(state).toEqual(expenses)
+  })
+
+  test('should add an expense', () => {
+    const expense = {
+      id: '100',
+      description: 'desc',
+      note: '',
+      amount: 12500,
+      createdAt: moment() //today
+    }
+    const action = {
+      type: 'ADD_EXPENSE',
+      expense
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(4)
+    expect(state).toEqual([...expenses, expense])
+  })
+
+  test('should edit an expense', () => {
+    const updates = {
+      description: 'New description',
+      note: 'New note',
+      amount: 25000,
+      createdAt: moment().subtract(1, 'day') //yesterday
+    }
+    const action = {
+      type: 'EDIT_EXPENSE',
+      id: expenses[0].id,
+      updates
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(3)
+    expect(state[0]).toEqual({
+      id: '1',
+      ...updates
+    })
+  })
+
+  test('should edit an expense 1 property', () => {
+    const amount = 25000
+    const action = {
+      type: 'EDIT_EXPENSE',
+      id: expenses[0].id,
+      updates: {
+        amount
+      }
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(3)
+    expect(state[0].amount).toBe(amount)
+  })
+
+  test('should not edit expense if expense not found', () => {
+    const updates = {
+      description: 'New description',
+      note: 'New note',
+      amount: 25000,
+      createdAt: moment().subtract(1, 'day') //yesterday
+    }
+    const action = {
+      type: 'EDIT_EXPENSE',
+      id: '-1',
+      updates
+    }
+    const state = expensesReducer(expenses, action)
+    expect(state.length).toBe(3)
+    expect(state).toEqual(expenses)
+  })
+
+  ```
+
+# Fixtures
+- In the test world, a fixture is just your baseline test data or dummy data 
+  ```javascript
+  //file: src/tests/fixtures/expenses.js
+  import moment from 'moment'
+
+  export default [{
+    id: '1',
+    description: 'Gum',
+    note: '',
+    amount: 195,
+    createdAt: 0 //unix epoch time - 1st January 1970
+  }, {
+    id: '2',
+    description: 'Rent',
+    note: '',
+    amount: 109500,
+    createdAt: moment(0).subtract(4, 'days').valueOf() //4 days in the past
+  },
+  {
+    id: '3',
+    description: 'Credit card',
+    note: '',
+    amount: 4500,
+    createdAt: moment(0).add(4, 'days').valueOf() //4 days in the future
+  }]
+  ```
+- Then we import the fixture wherever we need and use it as per usual
+  ```javascript
+  import expenses from '../fixtures/expenses'
+
+  console.log(expenses) //print the whole array
   ```
