@@ -1,8 +1,86 @@
 > markdown: https://guides.github.com/features/mastering-markdown/  
 > Preview: Chrome extension and QuickLook / space key on the file 
+> TOC failing if EOL enabled https://github.com/AlanWalk/markdown-toc/issues/65
 
 React Course - Udemy - Andrew Mead - Part II
 ============================================
+
+<!-- TOC -->
+
+- [React Router](#react-router)
+    - [Install](#install)
+    - [Import](#import)
+    - [Use BrowserRouter and Router](#use-browserrouter-and-router)
+    - [Webpack Configuration](#webpack-configuration)
+    - [Setting Up a 404](#setting-up-a-404)
+    - [Linking between Routes](#linking-between-routes)
+    - [Static content across pages](#static-content-across-pages)
+    - [Navigation panel](#navigation-panel)
+    - [Organizing our Routes](#organizing-our-routes)
+    - [Query Strings and URL Parameters](#query-strings-and-url-parameters)
+- [Redux](#redux)
+    - [The issues managing state](#the-issues-managing-state)
+    - [How Redux works](#how-redux-works)
+    - [Setting up Redux](#setting-up-redux)
+    - [Dispatching Actions](#dispatching-actions)
+    - [Subscribing and dynamic actions](#subscribing-and-dynamic-actions)
+        - [Watch for changes to the store](#watch-for-changes-to-the-store)
+        - [How to dispatch an action and pass some data along](#how-to-dispatch-an-action-and-pass-some-data-along)
+    - [Action generators](#action-generators)
+    - [Reducers](#reducers)
+    - [Working with multiple Reducers](#working-with-multiple-reducers)
+    - [Setting filters](#setting-filters)
+    - [Sorting](#sorting)
+- [ES6 features & Others](#es6-features--others)
+    - [uuid](#uuid)
+    - [time](#time)
+    - [Object Destructuring](#object-destructuring)
+    - [Array Destructuring](#array-destructuring)
+    - [Function parameters destructuring](#function-parameters-destructuring)
+    - [Array Spread Operator](#array-spread-operator)
+    - [Object Spread Operator](#object-spread-operator)
+- [Reorganizing the App](#reorganizing-the-app)
+- [The Higher Order Components](#the-higher-order-components)
+- [React-Redux](#react-redux)
+    - [Install and hook up store](#install-and-hook-up-store)
+    - [Reading from the Store](#reading-from-the-store)
+    - [Writing to the Store](#writing-to-the-store)
+    - [Handling the Form](#handling-the-form)
+        - [input and textarea](#input-and-textarea)
+        - [amount field](#amount-field)
+        - [createdAt field](#createdat-field)
+        - [Validate the form](#validate-the-form)
+        - [Edit Expense](#edit-expense)
+    - [Redux Developer Tools](#redux-developer-tools)
+    - [Filtering by dates](#filtering-by-dates)
+- [Yarn aliases](#yarn-aliases)
+- [Podcasts](#podcasts)
+- [Testing](#testing)
+    - [Testing Action Generators](#testing-action-generators)
+    - [Testing Selector](#testing-selector)
+    - [Testing reducers](#testing-reducers)
+        - [Filters](#filters)
+        - [Expenses](#expenses)
+- [Fixtures](#fixtures)
+- [Testing Components](#testing-components)
+    - [Snapshot](#snapshot)
+    - [Enzyme](#enzyme)
+    - [Testing Header](#testing-header)
+    - [Testing ExpenseList](#testing-expenselist)
+    - [Testing ExpenseListItem](#testing-expenselistitem)
+- [Mocking libraries with jest](#mocking-libraries-with-jest)
+    - [Testing ExpenseForm mocked library](#testing-expenseform-mocked-library)
+- [Testing user interaction](#testing-user-interaction)
+    - [Testing ExpenseForm user interaction](#testing-expenseform-user-interaction)
+- [Test spies](#test-spies)
+    - [Testing ExpenseForm onSubmit on parent](#testing-expenseform-onsubmit-on-parent)
+    - [Testing ExpenseForm datePicker](#testing-expenseform-datepicker)
+- [Testing AddExpensePage](#testing-addexpensepage)
+- [Testing EditExpensePage - Challenge](#testing-editexpensepage---challenge)
+- [Testing ExpenseListFilters](#testing-expenselistfilters)
+
+<!-- /TOC -->
+
 
 # React Router
 - There are differences between server routing and client routing
@@ -1003,8 +1081,7 @@ console.log({
 - We're going to use ```connect``` in all of our individual components that need to either **dispatch actions** or **read from the store** 
 
 ## Reading from the Store
-- What we get back from the API is a function, so we need to call it with the regular component
-```const ConnectedExpenseList = connect()(ExpenseList)```
+- What we get back from the API is a function, so we need to call it with the regular component const ConnectedExpenseList = connect()(ExpenseList)
   ```javascript
   import React from 'react'
   import { connect } from 'react-redux'
@@ -1012,12 +1089,11 @@ console.log({
   const ExpenseList = (props) => (
     <div>
       <h1>Expense List</h1>
-      {props.name}<br />             {/* //output: Rocio */}
-      {props.expenses.length} <br /> {/* //output: 2 */}
-      {props.filters.text}           {/* //output: bill */}
+      {props.name}<br />             //output: Rocio 
+      {props.expenses.length} <br /> //output: 2 
+      {props.filters.text}           //output: bill 
     </div>
   )
-
   //new const for HOC 
   //what we get back from the API is a function, so we need to call it with the regular component
   const ConnectedExpenseList = connect((state) => {
@@ -1031,7 +1107,6 @@ console.log({
     }
 
   })(ExpenseList)
-
   //export the connectedList instead the list
   export default ConnectedExpenseList
   ```
@@ -1063,17 +1138,17 @@ console.log({
     expenses: state.expenses,
     filters: state.filters
   })
-  ```
+    ```
 - As the store changes ```mapStateToProps``` automatically going to rerun getting the fresh values in the component
   ```javascript
   store.dispatch(setTextFilter('bill'))
 
   setTimeout(() => {
-    store.dispatch(setTextFilter("rent"));
+    store.dispatch(setTextFilter('rent'));
   }, 3000)
   ```
 - When you connect a component to the redux store it's reactive which means that as the store changes your component is going to get re-rendered with those new values
-- The connected component doesn't need to worry about using ```store.subscribe``` or ```store.getState``` it doesn't have to use any component state to manage that data, instead all of that is done for us by react-redux. All we have to do is define how we want to render things. This is called **Presentational Component Pattern**
+- The connected component doesn't need to worry about using ```store.subscribe``` or ```store.getState``` it doesn't have to use any component state to manage that data, instead all of that is done for us by react-redux. All we have to do is define how we want to render things. This is called Presentational Component Pattern
 - Expenses rendering
   ```javascript
   //ExpenseList.js
@@ -1113,6 +1188,7 @@ console.log({
 
   export default ExpenseListItem
   ```
+
 
 ## Writing to the Store
 - Dispatch actions to change data in the store
@@ -2150,7 +2226,7 @@ https://github.com/rShetty/awesome-podcasts#functional-programming
 - So if the Header output changes in a way we don't want we can catch that. If it changes in a way we do want that's fine too, we can allow that
 - The first time we run this test case it's always going to pass because there's no existing snapshot. jest is going to get ahead and create a new one. Jest is going to create a snapshot of what the rendered Header output looked like
 - The second time we run this test case it's going to compare with the existing one. If it's the same great the test will pass. If it's not the test is gonna fail
-- We get a new output in the console and jest creates a new directory in the tests/components folder named ```_snapshots_``` inside will add files with the component snapshot. This is auto-generated and we should n't change it
+- We get a new output in the console and jest creates a new directory in the tests/components folder named ```_snapshots_``` inside will add files with the component snapshot. This is -generated and we should n't change it
 - If we change something in the Header component the test will fail. We'll see the differences in the console where the new rendered component doesn't match the snapshot
 - From here we have two big choices, we can choose to accept these changes or reject them
 - If the changed wasn't intended we need to make changes to the code to get the test to pass
