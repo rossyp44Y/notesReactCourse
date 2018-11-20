@@ -3,7 +3,6 @@
 
 React Course - Udemy - Andrew Mead - Part II
 ============================================
-[[TOC]]
 
 # React Router
 - There are differences between server routing and client routing
@@ -1748,6 +1747,7 @@ https://github.com/rShetty/awesome-podcasts#functional-programming
   })
   ```
 - test files are run through babel so we can use ES6 and ES7 features
+- jest uses ```it``` as an alias for ```test```
 - We can run jest in watch mode, when a test changes or one of the things the file imports change, we're going to rerun the test suite
   - change the script in package.json. Although sometimes we don't want to watch changes just run the tests.
   ```javascript
@@ -2135,3 +2135,586 @@ https://github.com/rShetty/awesome-podcasts#functional-programming
 
   console.log(expenses) //print the whole array
   ```
+
+# Testing Components
+- react-test-renderer is a library created by the react team that allow us to render our components inside of just regular javascript code and then we can assert something about what got rendered
+  ```javascript
+  yarn add react-test-renderer
+  yarn test --watchAll
+  ```
+- There are two main ways to test react components: shallow rendering and full dom rendering
+
+## Snapshot
+- We won't assert what comes back from ```renderer.getRenderOutput()```, instead we'll use snapshots which allow us to track changes to data over time
+- We'll create a snapshot of ```Header``` at its current point in time and we'll be notified if this ever changes
+- So if the Header output changes in a way we don't want we can catch that. If it changes in a way we do want that's fine too, we can allow that
+- The first time we run this test case it's always going to pass because there's no existing snapshot. jest is going to get ahead and create a new one. Jest is going to create a snapshot of what the rendered Header output looked like
+- The second time we run this test case it's going to compare with the existing one. If it's the same great the test will pass. If it's not the test is gonna fail
+- We get a new output in the console and jest creates a new directory in the tests/components folder named ```_snapshots_``` inside will add files with the component snapshot. This is auto-generated and we should n't change it
+- If we change something in the Header component the test will fail. We'll see the differences in the console where the new rendered component doesn't match the snapshot
+- From here we have two big choices, we can choose to accept these changes or reject them
+- If the changed wasn't intended we need to make changes to the code to get the test to pass
+- If the change is on purpose we can accept the change by typing ```u``` in the terminal where the tests are running. jest will take the new snapshot and replace the old one 
+  ```javascript
+  //file src/tests/components/Header.test.js
+  import React from 'react'
+  import Header from '../../components/Header'
+  import ReactShallowRenderer from 'react-test-renderer/shallow'
+
+  test('should render Header correctly', () => {
+    const renderer = new ReactShallowRenderer()
+    renderer.render(<Header />)
+    console.log(renderer.getRenderOutput())
+
+    expect(renderer.getRenderOutput()).toMatchSnapshot()
+  })
+  ```
+
+## Enzyme
+- react-test-renderer is a very basic tool and our components might be complex for example button clicks, change inputs, search the rendered output for a specific element and grab its text etc
+- enzyme is a library released by airbnb and it's much more complete, it uses react-test-renderer underline
+- Install. The Adapter is new in version 3 of enzyme and allows to specify the react version against which we want to test our code. raf stands for Request Animation Frame and it's something provided by the browser. We don't have that in the testing environment so the raf library provides a polyfill for that
+  ```javascript
+  yarn add enzyme enzyme-adapter-react-16 raf
+  ```
+- https://airbnb.io/enzyme/   https://github.com/airbnb/enzyme 
+- SetUp configuration
+  ```javascript
+  //file: src/tests/setupTests.js
+  import Enzyme from 'enzyme'
+  import Adapter from 'enzyme-adapter-react-16' 
+
+  Enzyme.configure({
+    adapter: new Adapter()
+  })
+  ```
+- Create file in the root of the project ```jest.config.json``` and specify the setting file with the adapter. we can use the name we want
+  ```javascript
+  {
+    "setupFiles": [
+      "raf/polyfill", 
+      "<rootDir>/src/tests/setupTests.js"
+    ]
+  }
+  ```
+- Update the scripts section in package.json to specify the config file for jest
+  - instead of:  ```"test": "jest"```
+  - change for: ```"test": "jest --config=jest.config.json"```
+
+## Testing Header
+- Change test case to use enzyme instead of react-test-renderer
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import Header from '../../components/Header'
+
+  test('should render Header correctly', () => {
+    const wrapper = shallow(<Header />)
+    //find accepts usual selectors #id .class tagName
+    expect(wrapper.find('h1').length).toBe(1)
+    expect(wrapper.find('h1').text()).toBe('Expensify')
+  })
+  ```
+- Bring back the snapshot but now using enzyme
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import Header from '../../components/Header'
+
+  test('should render Header correctly', () => {
+    const wrapper = shallow(<Header />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+- Now the snapshot contains a bunch of code from enzyme that we don't want to keep because if something there changes our tests will fail
+- We'll use a little utility library to fix this ```enzyme-to-json``` https://github.com/adriantoine/enzyme-to-json
+- ```yarn add enzyme-to-json```
+- Use the utility
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import toJSON from 'enzyme-to-json'
+  import Header from '../../components/Header'
+
+  test('should render Header correctly', () => {
+    const wrapper = shallow(<Header />)
+    expect(toJSON(wrapper)).toMatchSnapshot()
+  })
+  ```
+- We can also setup enzyme to use the utility library toJSON automatically so we don't have to add it to our code
+- Add another config to the jest config file
+  ```javascript
+  "snapshotSerializers": [
+    "enzyme-to-json/serializer"
+  ]
+  ```
+- Change code so that we don't have to use toJSON
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import Header from '../../components/Header'
+
+  test('should render Header correctly', () => {
+    const wrapper = shallow(<Header />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ``` 
+- ```ExpenseDashboardPage``` and ```NotFoundPage``` can be tested in exactly the same way as ```Header```
+- To debug we can use ```console.log(wrapper.debug())```
+
+## Testing ExpenseList 
+- When we're testing our react components we want to test the unconnected version because we want to be able to provide a set of dynamic props. So we don't want the props to come from the store instead we'll provide them directly. For instance, we want to provide the list of expenses to be presented in ExpenseList
+- If we're going to test the unconnected version of the component we have to export it ```export const ExpenseList = (props) => (...)``` as a result we have now a default export and a named export
+- It's good idea to check the snapshot to make sure it looks good
+- ExpenseList test, changed slightly the component to show message when the list of expenses is empty
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import { ExpenseList } from '../../components/ExpenseList'
+  import expenses from '../fixtures/expenses'
+
+  test('should render ExpenseList with expenses', () => {
+    const wrapper = shallow(<ExpenseList expenses={expenses} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should render ExpenseList with empty message', () => {
+    const wrapper = shallow(<ExpenseList expenses={[]} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+
+## Testing ExpenseListItem 
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import ExpenseListItem from '../../components/ExpenseListItem'
+  import expenses from '../fixtures/expenses'
+
+  test('should render ExpenseListItem correctly', () => {
+    const wrapper = shallow(<ExpenseListItem {...expenses[1]} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+
+# Mocking libraries with jest
+- Sometimes we need to get in place a fake version of a library. For instance the component ExpenseForm uses moment to get the current date/time for new Expenses, when we create a snapshot the first time will be OK but after that it will fail because the now moment will be different every time we run the test. What we want to do is to create a mock of the moment library which will always return the same value
+- https://jestjs.io/docs/en/manual-mocks
+
+## Testing ExpenseForm mocked library
+- Create folder ```__mocks__``` inside tests and inside we'll create a new file for the mocked version of the moment library ```moment.js```
+- Then we define exactly what we want the mocked moment look like and we'll use that in the actual test
+- We check how we're using moment in our component: we import it as a default, we call it as a function, sometimes pass data sometimes don't. Then, we simulate it
+  ```javascript
+  //we can't just import moment because it will try to import the mocked one
+  //that will create an infinite loop and eventually run into stack overflow
+  const moment = require.requireActual('moment')
+
+  //use the timestamp if provided otherwise use zero
+  export default (timestamp = 0) => {
+    return moment(timestamp)
+  }
+  ```
+- Then we write the actual tests
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import ExpenseForm from '../../components/ExpenseForm'
+  import expenses from '../fixtures/expenses'
+
+  test('should render ExpenseForm correctly', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should render ExpenseForm correctly with expense data', () => {
+    const wrapper = shallow(<ExpenseForm expense={expenses[1]} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+
+# Testing user interaction
+- We need to simulate user interaction that triggers events in order to test the app behavior. For example simulate the onSubmit of a form to check an error message or the onChange on our filter dropdown
+- simulate: https://airbnb.io/enzyme/docs/api/ShallowWrapper/simulate.html
+- check values in the state: https://airbnb.io/enzyme/docs/api/ShallowWrapper/state.html
+- We can add several snapshots to check the rendering before and after the event triggering
+
+## Testing ExpenseForm user interaction
+- Testing onSubmit on the form
+  ```javascript
+  test('should render error for invalid form submission', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    //snapshot before submitting the form
+    expect(wrapper).toMatchSnapshot()
+    //we need to mock an event object that gets passed to the event handlers
+    wrapper.find('form').simulate('submit', {
+      preventDefault: () => { }
+    })
+    //when the form has an error because description or amount are empty
+    //we set as part of the state a value inside error
+    //and that's what we're going to assert
+    expect(wrapper.state('error').length).toBeGreaterThan(0)
+    expect(wrapper.state('error')).toBe('Please provide description and amount.')
+    //snapshot after submitting the form
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+- Testing onChange when typing on input description field and textarea field
+  ```javascript
+  test('should set description on input change', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    const value = 'New description'
+    expect(wrapper).toMatchSnapshot()
+    wrapper.find('input').first().simulate('change', { //also .at(0)
+      target: { value }
+    })
+    expect(wrapper.state('description')).toBe(value)
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should set note on textarea change', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    const value = 'New note for the expense'
+    expect(wrapper).toMatchSnapshot()
+    wrapper.find('textarea').simulate('change', {
+      persist: () => { },
+      target: { value }
+    })
+    expect(wrapper.state('note')).toBe(value)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+- Testing onChange on the amount field, valid and invalid data
+  ```javascript
+  test('should set amount if valid input', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    const value = '23.50'
+    wrapper.find('input').at(1).simulate('change', {
+      target: { value }
+    })
+    expect(wrapper.state('amount')).toBe(value)
+  })
+
+  test('should not set amount if invalid input', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    const value = '12.122'
+    wrapper.find('input').at(1).simulate('change', {
+      target: { value }
+    })
+    expect(wrapper.state('amount')).toBe('')
+  })
+  ```
+
+# Test spies
+- The goal here is to test the call to the parent function this.props.onSubmit({...}) with the correct information
+- To do this we need to set and spy which is a mocked function and call it simulating this has been called and then asserting that was the case
+- Use the HaveBeenCalled methods on expect https://jestjs.io/docs/en/expect
+  ```javascript
+  test('should call spy', () => {
+    //create spy, just a fake function created by jest for us
+    //then we can make assertions about that function
+    //like if it was called, called 5 times, called with specific arguments
+    const onSubmitSpy = jest.fn()
+    //call spy
+    onSubmitSpy()
+    //assert it was called
+    expect(onSubmitSpy).toHaveBeenCalled()
+  })
+  ```
+- To check that the spy has been called with the correct data we use toHaveBeenCalledWith(arg1, arg2, ...) in https://jestjs.io/docs/en/expect#tohavebeencalledwitharg1-arg2-
+  ```javascript
+  test('should call spy with specific values', () => {
+    const onSubmitSpy = jest.fn()
+    onSubmitSpy('Rocio', 'Melbourne')
+    expect(onSubmitSpy).toHaveBeenCalledWith('Rocio', 'Melbourne')
+  })
+  ```
+
+## Testing ExpenseForm onSubmit on parent
+  ```javascript
+  test('should call onSubmit prop for valid form submission', () => {
+    //create the spy
+    const onSubmitSpy = jest.fn()
+    //render ExpenseForm component with data 
+    //we need to pass onSubmit being the spy
+    const wrapper = shallow(<ExpenseForm expense={expenses[0]} onSubmit={onSubmitSpy} />)
+    //simulate form submission
+    wrapper.find('form').simulate('submit', {
+      preventDefault: () => {}
+    })
+    //assert what should have happened:
+    //- state.error should be an empty string
+    //- the spy should have been called with specific arguments
+    expect(wrapper.state('error')).toBe('')
+    expect(onSubmitSpy).toHaveBeenCalledWith({ //also lastCalled
+      description: expenses[0].description,
+      note: expenses[0].note,
+      amount: expenses[0].amount,
+      createdAt: expenses[0].createdAt
+    })
+  })
+  ```
+
+## Testing ExpenseForm datePicker
+- We need to get a hold on one of the properties of the component and we can do that using the enzyme function prop(key) https://airbnb.io/enzyme/docs/api/ShallowWrapper/prop.html
+- Testing onDateChange
+  ```javascript
+  test('should set new date on date change', () => {
+    const now = moment()
+    const wrapper = shallow(<ExpenseForm />)
+    console.log(wrapper.debug())
+    //trigger the prop from the child component <SingleDatePicker />
+    wrapper.find(SingleDatePicker).prop('onDateChange')(now)
+    expect(wrapper.state('createdAt')).toEqual(now)
+    //there is an issue with SingleDatePicker, we need either import the component
+    //and use it in find instead of the string or use the string withStyles(SingleDatePicker)
+  })
+  ```
+- Testing onFocusChange
+  ```javascript
+  test('should set calendar focus on change', () => {
+    const wrapper = shallow(<ExpenseForm />)
+    wrapper.find(SingleDatePicker).prop('onFocusChange')({ focused: true })
+    expect(wrapper.state('calendarFocused')).toBe(true)
+  })
+  ```
+
+# Testing AddExpensePage
+- We can do some refactoring to make this component easier to test
+- We're adding an expense by dispatching the action we get from the action generator addExpense
+  ```javascript
+  import { addExpense } from '../actions/expenses'
+  onSubmit={(expense) => {
+    props.dispatch(addExpense(expense)) //refactor this
+    props.history.push('/')
+  }}
+  ...
+  export default connect()(AddExpensePage)
+  ```
+- We can test ```prop.dispatch``` with a spy, we can take the unconnected component, render it using shallow, pass in the spy and make sure it gets called
+- Testing ```addExpense``` is trickier, here we're referencing a function that is imported up above, not something that's passed in as a prop (like in SingleDatePicker) making the Page harder to test
+- What we can do is to use a feature of react-redux to simplify the code a little bit. We know that the first parameter in connect is the mapStateToProps but we'll pass undefined as we don't need it, as second parameter we can pass ```mapDispatchToProps```
+- From react-redux documentation: https://react-redux.js.org/docs/using-react-redux/connect-dispatching-actions-with-mapdispatchtoprops
+  > Providing a mapDispatchToProps allows you to specify which actions your component might need to dispatch. It lets you provide action dispatching functions as props. Therefore, instead of calling props.dispatch(() => increment()), you may call props.increment() directly. 
+
+- mapDispatchToProps is similar to mapStateToProps but instead of working with the state it works with dispatch. Gets called with dispatch and the goal is to return an object with various props that are going to call dispatch. So ```props.dispatch(addExpense(expense))``` changes to ```props.addExpense(expense)``` and connect changes to:
+  ```javascript
+  const mapDispatchToProps = (dispatch) => {
+    return {
+      addExpense: (expense) => dispatch(addExpense(expense))
+    }
+  }
+  export default connect(undefined, mapDispatchToProps)(AddExpensePage)
+  ```
+- Also in order to avoid inline function we'll convert the component from function to class and export the unconnected version
+- Refactor
+  ```javascript
+  import React from 'react'
+  import ExpenseForm from './ExpenseForm'
+  import { connect } from 'react-redux' // we need connect to be able to dispatch actions
+  import { addExpense } from '../actions/expenses'
+
+  export class AddExpensePage extends React.Component {
+    onSubmit = (expense) => {
+      this.props.addExpense(expense) //we set the addExpense below in mapDispatchToProps
+      this.props.history.push('/')
+    }
+    render() {
+      return (
+        <div>
+          <h1>Add Expense</h1>
+          <ExpenseForm 
+            //onSubmit gets passed to the Form as prop so that it can be executed from there
+            //expense is an object that gets filled in inside the children ExpenseForm
+            onSubmit={this.onSubmit}
+          />
+        </div>
+      )
+    }
+  }
+
+  const mapDispatchToProps = (dispatch) => ({ //dispatch gets passed by connect
+      addExpense: (expense) => dispatch(addExpense(expense)) //implicitly return object
+  })
+
+  //don't need props from the store but we want to connect this component to dispatch addExpense action
+  export default connect(undefined, mapDispatchToProps)(AddExpensePage)
+
+  ```
+- Apparently there's an alternative way to do the above (FAQ of the course)
+  ```javascript
+  import React from 'react'
+  import ExpenseForm from './ExpenseForm'
+  import { connect } from 'react-redux' // we need connect to be able to dispatch actions
+  import { addExpense } from '../actions/expenses'
+
+  export class AddExpensePage extends React.Component {
+    onSubmit = (expense) => {
+      this.props.addExpense(expense) //the action as before
+      this.props.history.push('/')
+    }
+    render() {
+      return (
+        <div>
+          <h1>Add Expense</h1>
+          <ExpenseForm 
+            onSubmit={this.onSubmit}
+          />
+        </div>
+      )
+    }
+  }
+  export default connect(undefined, { addExpense })(AddExpensePage) //destructuring dispatch action
+  ```
+  ```javascript
+  //test
+  test('should handle onSubmit', () => {
+    const spy = jest.fn()
+    const history = { push: jest.fn() }
+    const wrapper = shallow(<AddExpensePage addExpense={spy} history={history} />)
+    wrapper.find('ExpenseForm').prop('onSubmit')(expenses[1])
+    expect(spy).toHaveBeenCalledWith(expenses[1])
+  })
+  ```
+- Test render correctly
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import { AddExpensePage } from '../../components/AddExpensePage'
+
+  test('should render AddExpensePage correctly', () => {
+    const onSubmit = jest.fn()
+    const history = { push: jest.fn() }
+    const wrapper = shallow(<AddExpensePage onSubmit={onSubmit} history={history} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+  ```
+- Test that when the form gets submitted both spies are called with the correct data
+  ```javascript
+  test('should handle onSubmit', () => {
+    const addExpense = jest.fn()
+    const history = { push: jest.fn() }
+    const wrapper = shallow(<AddExpensePage addExpense={addExpense} history={history} />)
+    wrapper.find('ExpenseForm').prop('onSubmit')(expenses[1])
+    expect(history.push).toHaveBeenCalledWith('/')
+    expect(addExpense).toHaveBeenCalledWith(expenses[1])
+  })
+  ```
+- If we find ourselves repeating code in the tests we can extract sections using jest globals https://jestjs.io/docs/en/api
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import { AddExpensePage } from '../../components/AddExpensePage'
+  import expenses from '../fixtures/expenses'
+
+  let addExpense, history, wrapper
+
+  beforeEach(() => {
+    addExpense = jest.fn()
+    history = { push: jest.fn() }
+    wrapper = shallow(<AddExpensePage addExpense={addExpense} history={history} />)
+  })
+
+  test('should render AddExpensePage correctly', () => { 
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should handle onSubmit', () => {
+    wrapper.find('ExpenseForm').prop('onSubmit')(expenses[1])
+    expect(history.push).toHaveBeenCalledWith('/')
+    expect(addExpense).toHaveBeenCalledWith(expenses[1])
+  })
+  ```
+
+# Testing EditExpensePage - Challenge
+- Refactoring
+  ```javascript
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import ExpenseForm from './ExpenseForm'
+  import { editExpense, removeExpense } from '../actions/expenses'
+
+  export class EditExpensePage extends React.Component {
+    onSubmit = (expense) => {
+      this.props.editExpense(this.props.expense.id, expense) //we set the editExpense below in mapDispatchToProps
+      this.props.history.push('/')
+    }
+    onRemove = () => {
+      this.props.removeExpense({ id: this.props.expense.id }) //we set the removeExpense below in mapDispatchToProps
+      this.props.history.push('/')
+    }
+    render() {
+      return (
+        <div>
+          <ExpenseForm 
+            expense={this.props.expense}
+            onSubmit={this.onSubmit}
+          />
+          <button onClick={this.onRemove}>Remove</button>
+        </div>
+      )
+    }
+  }
+
+  const mapDispatchToProps = (dispatch, ownProps) => ({ //ownProps are there in case we need them
+    editExpense: (id, expense) => dispatch(editExpense(id, expense)), //pass it through
+    removeExpense: (data) => dispatch(removeExpense(data))
+  })
+  const mapStateToProps = (state, props) => ({
+    expense: state.expenses.find((expense) => expense.id === props.match.params.id)
+  })
+
+  export default connect(mapStateToProps, mapDispatchToProps)(EditExpensePage)
+  ```
+- Tests
+  ```javascript
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import { EditExpensePage } from '../../components/EditExpensePage'
+  import expenses from '../fixtures/expenses'
+
+  let editExpense, removeExpense, history, wrapper
+
+  beforeEach(() => { 
+    editExpense = jest.fn() //spy
+    removeExpense = jest.fn()
+    history = { push: jest.fn() }
+    wrapper = shallow(
+      <EditExpensePage 
+        editExpense={editExpense} 
+        removeExpense={removeExpense} 
+        history={history} 
+        expense={expenses[2]}
+      />)
+  })
+
+  test('should render EditExpensePage correctly', () => {
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should handle editExpense', () => {
+    wrapper.find('ExpenseForm').prop('onSubmit')(expenses[2])
+    expect(history.push).toHaveBeenCalledWith('/')
+    expect(editExpense).toHaveBeenCalledWith(expenses[2].id, expenses[2])
+  })
+
+  test('should handle removeExpense', () => {
+    wrapper.find('button').simulate('click')
+    expect(history.push).toHaveBeenCalledWith('/')
+    expect(removeExpense).toHaveBeenCalledWith( {id: expenses[2].id } )
+  })
+  ```
+# Testing ExpenseListFilters
+- Refactor class based component to avoid inline functions, set mapDispatchToProps and export unconnected version of the component
+- Add new fixture for two filters
+- Set up test data in beforeEach
+- Write up tests
+- Use ```wrapper.setProps({ filters: altFilters })``` from enzyme to change the filter values
+
+
+
+
+
+
+
+  
