@@ -203,6 +203,7 @@ React Course - Udemy - Andrew Mead - Part III
 - yarn run dev-server
 
 ## Production server with express
+- Servers such as live-server and webpack-dev-server are great for development but they're not suitable for production
 - yarn add express
 - node file to be run in command line with ```node server/server.js```
 - http://expressjs.com/en/4x/api.html#app
