@@ -4,7 +4,16 @@
 
 React Course - Udemy - Andrew Mead - Part III
 ===============================================
+<!-- TOC -->
 
+- [Deploying your Apps](#deploying-your-apps)
+  - [Git](#git)
+  - [Github / SSH keys](#github--ssh-keys)
+  - [Production Webpack](#production-webpack)
+  - [Creating separate CSS files](#creating-separate-css-files)
+  - [Production server with express](#production-server-with-express)
+
+<!-- /TOC -->
 
 # Deploying your Apps
 
