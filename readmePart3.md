@@ -12,6 +12,10 @@ React Course - Udemy - Andrew Mead - Part III
   - [Production Webpack](#production-webpack)
   - [Creating separate CSS files](#creating-separate-css-files)
   - [Production server with express](#production-server-with-express)
+  - [Heroku](#heroku)
+- [New feature workflow](#new-feature-workflow)
+- [Adding Total selector](#adding-total-selector)
+- [New component ExpensesSummary](#new-component-expensessummary)
 
 <!-- /TOC -->
 
@@ -228,3 +232,260 @@ React Course - Udemy - Andrew Mead - Part III
     console.log('Server is up!')
   })
   ```
+
+## Heroku
+- Heroku is an application deployment platform similar to AWS Beanstalk or Digital Ocean
+- https://www.heroku.com
+- Heroku CLI https://devcenter.heroku.com/articles/heroku-cli
+- Download, install and check version: ```heroku --version```
+- Authenticate: heroku login
+- Create App:  ```heroku create rocio-react-expensify``` If no name is specified, a random one will be used. This command sets up the new application and also adds a new git remote to the local repository
+- ```git remote``` will show up two remotes: origin and heroku. ```git remote -v``` will verbose both fetch and push urls for both remotes
+- To deploy we're gonna push our code to the heroku remote, heroku will get that code and deploy
+- We need to make some changes specific for heroku
+- When Heroku starts up our application it's going to try to run the start script in package.json in there we need to specify to run our express server
+  ```javascript
+    "scripts": {
+      ...
+      "start": "node server/server.js"
+    },
+  ```
+- Heroku will provide a dynamic port value in an environment variable so we can't hardcode 3000, that's ok for development but not for production
+  ```javascript
+  const path = require('path')
+  const express = require('express')
+  const app = express()
+  const publicPath = path.join(__dirname, '..', 'public')
+  //PORT in the env variable heroku will set up for us
+  //if it doesn't exist that means we're in local an we use 3000
+  const port = process.env.PORT || 3000
+
+  app.use(express.static(publicPath))
+
+  //match all unmatched routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'))
+  })
+  app.listen(port, () => {
+    console.log('Server is up!')
+  })
+  ```
+- We need to teach heroku how to run webpack. There are a couple of Heroku script names we can use to specify tasks. heroku-prebuild which we're not using and heroku-postbuild which will run after installing all dependencies. We also need to add to gitignore the four files that are generated when we run build:prod locally.
+  ```javascript
+  //package.json add script
+  "heroku-postbuild": "yarn run build:prod"
+
+  //.gitignore
+  node_modules/
+  public/bundle.js
+  public/bundle.js.map
+  public/styles.css
+  public/styles.css.map
+  ``` 
+- Commit and push changes
+  ```javascript
+  git add .
+  git commit -m "setup production build and server"
+  git push //to github
+  git push heroku master //remote branch - takes some time
+  heroku open //or we can copy the url and paste it in the browser
+  https://rocio-react-expensify.herokuapp.com
+  heroku logs
+  ```
+- Another improvement is to move dependencies used only for development purposes such as enzyme, live-server and webpack-dev-server to a different section in package.json called ```devDependencies``` so that they are not installed in heroku 
+- When installing a dependency from the terminal use ```yarn add chalk --dev```.
+  ```javascript
+  //moved to devDependencies
+  "devDependencies": {
+    "enzyme": "^3.7.0",
+    "enzyme-adapter-react-16": "^1.7.0",
+    "enzyme-to-json": "^3.3.4",
+    "jest": "^23.6.0",
+    "react-test-renderer": "^16.6.3",
+    "webpack-dev-server": "2.5.1"
+  }
+  //removed because we don't need them anymore
+  dependency: "live-server": "^1.2.0",
+  script: "serve": "live-server public/",
+  ```
+- Now, how to install one or another? ```yarn install --production``` will install everything under ```dependencies``` and leave out the ```devDependencies``` This is the one used by heroku. ```yarn install``` will continue installing both, regular dependencies and dev dependencies
+- Next improvement is to create a dist folder inside public to put the four compiled files webpack generates instead of having the four files along with other files such as index.html. This will also change ```.gitignore``` as we can now ignore the whole directory
+- Change index.html to refer to the new structure
+  ```javascript
+  <link rel="stylesheet" type="text/css" href="/dist/styles.css"/>
+  <script src="dist/bundle.js"></script>
+  ```
+- Change webpack.config.js to dump the compiled files inside the new folder 
+  ```javascript
+  entry: './src/app.js',
+  output: {
+    path: path.join(__dirname, 'public', 'dist'), //absolute path to the public/dist folder
+    filename: 'bundle.js'
+  },
+  ```
+- The devServer never writes files in disk instead keeps them in memory, we need a new property to set the new dist folder
+  ```javascript
+  devServer: {
+    contentBase: path.join(__dirname, 'public') ,
+    historyApiFallback: true,
+    publicPath: '/dist/'
+  }
+  ```
+- Check devServer by running yarn r```un dev-server```. Head over to localhost:8080
+- Check prod by running ```yarn run build:prod```, check new dist folder, then ```yarn start``` and head over to localhost:3000
+- We can simplify .gitignore file
+  ```javascript
+  node_modules/
+  public/dist/
+  ```
+- Commit and push
+  - If there're no new files, just modified files we can use a shortcut 
+  ```javascript
+  git commit -am "setup dev devDependencies and dist folder"
+  git push //to github
+  git push heroku master
+  ```
+  
+# New feature workflow
+- yarn run dev-server
+- yarn run test --watch
+- change date format
+  ```javascript
+  //ExpenseListItem.js
+  import moment from 'moment'
+  {moment(createdAt).format('MMM Do, YYYY')}
+  ``` 
+- change currency format
+  - http://numeraljs.com
+  - Also valid to use Intl.NumberFormat
+  ```javascript
+  //ExpenseListItem.js
+  yarn add numeral
+  import numeral from 'numeral'
+  {numeral(amount / 100).format('$0,0.00')} 
+  ```
+- Commit and push changes
+  ```javascript
+  git status
+  git commit -a -m "setup formatting for amount and createdAt"
+  git status
+  git push //to github
+  git push heroku master 
+  ```
+
+# Adding Total selector
+  ```javascript
+  //expenses-total.js
+  //returns the sum of all amounts in the expenses array
+  export default (expenses) => expenses
+    .map((expense) => expense.amount)
+    .reduce((sum, value) => sum + value, 0)
+
+  /* The reduce() method reduces the array to a single value.
+    The reduce() method executes a provided function for each value of the array (from left-to-right).
+    The return value of the function is stored in an accumulator
+    Note: reduce() does not execute the function for array elements without values.
+    array.reduce(function(total, currentValue, currentIndex, arr), initialValue)
+  */
+  //Equivalent function before simplification
+  export default (expenses) => {
+    return expenses.map((expense) => {
+      return expense.amount
+    }).reduce((acc, currValue) => {
+      return acc + currValue
+    }, 0)
+  } 
+  ```
+  ```javascript
+  //Alternative way 1
+  import _ from "lodash";
+  export const selectExpensesTotal = expenses => _.sumBy(expenses, "amount");
+  //Alternative way 2
+  export default (expenses) => {
+  return expenses.reduce((total, expense) => total + expense.amount, 0);
+  };
+  ```
+  ```javascript
+  //expenses-total.test.js
+  import selectExpensesTotal from '../../selectors/expenses-total'
+  import expenses from '../fixtures/expenses'
+
+  test('should return 0 if no expenses', () => {
+    const result = selectExpensesTotal([])
+    expect(result).toBe(0)
+  })
+
+  test('should correctly add up a single expense', () => {
+    const result = selectExpensesTotal([expenses[0]])
+    expect(result).toBe(expenses[0].amount)
+  })
+
+  test('should correctly add up multiple expenses', () => {
+    const expectedSum = 114195
+    const result = selectExpensesTotal(expenses)
+    expect(result).toBe(expectedSum)
+  })
+  ```
+
+# New component ExpensesSummary
+  ```javascript
+  //ExpensesSummary.js
+  import React from 'react'
+  import { connect } from 'react-redux'
+  import selectExpenses from '../selectors/expenses'
+  import selectExpensesTotal from '../selectors/expenses-total'
+  import numeral from 'numeral'
+
+  export const ExpensesSummary = ( {expenseCount, expensesTotal}) => {
+    const expenseWord = expenseCount === 1 ? 'expense' : 'expenses'
+    const formattedExpensesTotal = numeral(expensesTotal / 100).format('$0,0.00')
+    return (
+      <div>
+        <h1>Viewing {expenseCount} {expenseWord} totalling {formattedExpensesTotal}</h1>
+      </div>
+    )
+  }
+
+  const mapStateToProps = (state) => {
+    const visibleExpenses = selectExpenses(state.expenses, state.filters)
+    return {
+      expenseCount: visibleExpenses.length,
+      expensesTotal: selectExpensesTotal(visibleExpenses)
+    }
+  }
+
+  export default connect(mapStateToProps)(ExpensesSummary)
+
+  //ExpensesSummary.test.js
+  import React from 'react'
+  import { shallow } from 'enzyme'
+  import { ExpensesSummary } from '../../components/ExpensesSummary'
+
+  test('should correctly render ExpensesSummary with one expense', () => {
+    const wrapper = shallow(<ExpensesSummary expenseCount={1} expensesTotal={235} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  test('should correctly render ExpensesSummary with multiple expenses', () => {
+    const wrapper = shallow(<ExpensesSummary expenseCount={23} expensesTotal={1141952323} />)
+    expect(wrapper).toMatchSnapshot()
+  })
+
+  //ExpenseDashboardPage.js
+  import React from 'react'
+  import ExpenseList from './ExpenseList'
+  import ExpenseListFilters from './ExpenseListFilters'
+  import ExpensesSummary from './ExpensesSummary'
+
+  const ExpenseDashboardPage = () => (
+    <div>
+      <ExpensesSummary />
+      <ExpenseListFilters />
+      <ExpenseList />
+    </div>
+  );
+
+  export default ExpenseDashboardPage
+  ```
+
+    
